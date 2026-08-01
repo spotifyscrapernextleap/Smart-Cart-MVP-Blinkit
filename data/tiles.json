@@ -1,0 +1,218 @@
+[
+  {
+    "id": "vegetables-fruits",
+    "label": "Vegetables & Fruits",
+    "section": "Grocery & Kitchen",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 90
+  },
+  {
+    "id": "atta-rice-dal",
+    "label": "Atta, Rice & Dal",
+    "section": "Grocery & Kitchen",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 120
+  },
+  {
+    "id": "oil-ghee-masala",
+    "label": "Oil, Ghee & Masala",
+    "section": "Grocery & Kitchen",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 120
+  },
+  {
+    "id": "dairy-bread-eggs",
+    "label": "Dairy, Bread & Eggs",
+    "section": "Grocery & Kitchen",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 110
+  },
+  {
+    "id": "bakery-biscuits",
+    "label": "Bakery & Biscuits",
+    "section": "Grocery & Kitchen",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 100
+  },
+  {
+    "id": "dry-fruits-cereals",
+    "label": "Dry Fruits & Cereals",
+    "section": "Grocery & Kitchen",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 100
+  },
+  {
+    "id": "chicken-meat-fish",
+    "label": "Chicken, Meat & Fish",
+    "section": "Grocery & Kitchen",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 70
+  },
+  {
+    "id": "kitchenware-appliances",
+    "label": "Kitchenware & Appliances",
+    "section": "Grocery & Kitchen",
+    "searchable": false,
+    "consumableDefault": false,
+    "targetCount": 80
+  },
+  {
+    "id": "chips-namkeen",
+    "label": "Chips & Namkeen",
+    "section": "Snacks & Drinks",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 90
+  },
+  {
+    "id": "sweets-chocolates",
+    "label": "Sweets & Chocolates",
+    "section": "Snacks & Drinks",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 90
+  },
+  {
+    "id": "drinks-juices",
+    "label": "Drinks & Juices",
+    "section": "Snacks & Drinks",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 100
+  },
+  {
+    "id": "tea-coffee-milk-drinks",
+    "label": "Tea, Coffee & Milk Drinks",
+    "section": "Snacks & Drinks",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 80
+  },
+  {
+    "id": "instant-food",
+    "label": "Instant Food",
+    "section": "Snacks & Drinks",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 100
+  },
+  {
+    "id": "sauces-spreads",
+    "label": "Sauces & Spreads",
+    "section": "Snacks & Drinks",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 90
+  },
+  {
+    "id": "ice-creams-more",
+    "label": "Ice Creams & More",
+    "section": "Snacks & Drinks",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 48
+  },
+  {
+    "id": "bath-body",
+    "label": "Bath & Body",
+    "section": "Beauty & Personal Care",
+    "searchable": false,
+    "consumableDefault": true,
+    "targetCount": 80
+  },
+  {
+    "id": "hair",
+    "label": "Hair",
+    "section": "Beauty & Personal Care",
+    "searchable": false,
+    "consumableDefault": true,
+    "targetCount": 70
+  },
+  {
+    "id": "skin-face",
+    "label": "Skin & Face",
+    "section": "Beauty & Personal Care",
+    "searchable": false,
+    "consumableDefault": true,
+    "targetCount": 70
+  },
+  {
+    "id": "beauty-cosmetics",
+    "label": "Beauty & Cosmetics",
+    "section": "Beauty & Personal Care",
+    "searchable": false,
+    "consumableDefault": true,
+    "targetCount": 48
+  },
+  {
+    "id": "feminine-hygiene",
+    "label": "Feminine Hygiene",
+    "section": "Beauty & Personal Care",
+    "searchable": false,
+    "consumableDefault": true,
+    "targetCount": 50
+  },
+  {
+    "id": "baby-care",
+    "label": "Baby Care",
+    "section": "Beauty & Personal Care",
+    "searchable": false,
+    "consumableDefault": true,
+    "targetCount": 70
+  },
+  {
+    "id": "health-pharma",
+    "label": "Health & Pharma",
+    "section": "Beauty & Personal Care",
+    "searchable": false,
+    "consumableDefault": true,
+    "targetCount": 70
+  },
+  {
+    "id": "home-lifestyle",
+    "label": "Home & Lifestyle",
+    "section": "Household Essentials",
+    "searchable": true,
+    "consumableDefault": false,
+    "targetCount": 90
+  },
+  {
+    "id": "cleaners-repellents",
+    "label": "Cleaners & Repellents",
+    "section": "Household Essentials",
+    "searchable": true,
+    "consumableDefault": true,
+    "targetCount": 100
+  },
+  {
+    "id": "stationery-games",
+    "label": "Stationery & Games",
+    "section": "Household Essentials",
+    "searchable": true,
+    "consumableDefault": false,
+    "targetCount": 60
+  },
+  {
+    "id": "electronics",
+    "label": "Electronics",
+    "section": "Household Essentials",
+    "searchable": false,
+    "consumableDefault": false,
+    "targetCount": 60
+  },
+  {
+    "id": "pet-store",
+    "label": "Pet Store",
+    "section": "Pet Store",
+    "searchable": false,
+    "consumableDefault": true,
+    "targetCount": 80
+  }
+]

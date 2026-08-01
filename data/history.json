@@ -1,0 +1,1225 @@
+{
+ "user": {
+  "id": "u_dabbler_01",
+  "accountAgeDays": 247,
+  "segment": "dabbler"
+ },
+ "orders": [
+  {
+   "orderId": "o_001",
+   "daysAgo": 1,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00095",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00096",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00792",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00973",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00983",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01158",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_002",
+   "daysAgo": 2,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_003",
+   "daysAgo": 4,
+   "items": [
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00791",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00792",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_004",
+   "daysAgo": 5,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00092",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00096",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01152",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01153",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_005",
+   "daysAgo": 7,
+   "items": [
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00792",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00981",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00983",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_006",
+   "daysAgo": 9,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_007",
+   "daysAgo": 11,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00096",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00794",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01157",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_008",
+   "daysAgo": 14,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_009",
+   "daysAgo": 16,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00791",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00981",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00983",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_010",
+   "daysAgo": 19,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00096",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01157",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01163",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_011",
+   "daysAgo": 22,
+   "items": [
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00792",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00794",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_012",
+   "daysAgo": 25,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_013",
+   "daysAgo": 28,
+   "items": [
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00094",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00096",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00799",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00975",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_014",
+   "daysAgo": 31,
+   "items": [
+    {
+     "productId": "p_00009",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_015",
+   "daysAgo": 34,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00797",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00799",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_016",
+   "daysAgo": 38,
+   "items": [
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00094",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00095",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01157",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01158",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01943",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_017",
+   "daysAgo": 42,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00791",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00792",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00973",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00983",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_018",
+   "daysAgo": 46,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01937",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01943",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_019",
+   "daysAgo": 49,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00095",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 1
+    },
+    {
+     "productId": "p_02157",
+     "quantity": 1
+    },
+    {
+     "productId": "p_02161",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_020",
+   "daysAgo": 53,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01937",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01943",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_021",
+   "daysAgo": 58,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00797",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00973",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00983",
+     "quantity": 1
+    },
+    {
+     "productId": "p_02161",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_022",
+   "daysAgo": 63,
+   "items": [
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00092",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00094",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01163",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01937",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_023",
+   "daysAgo": 67,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00441",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00794",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00799",
+     "quantity": 2
+    },
+    {
+     "productId": "p_02166",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_024",
+   "daysAgo": 72,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01937",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01940",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_025",
+   "daysAgo": 78,
+   "items": [
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00441",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00973",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01153",
+     "quantity": 2
+    },
+    {
+     "productId": "p_02157",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_026",
+   "daysAgo": 84,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_027",
+   "daysAgo": 90,
+   "items": [
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00453",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00792",
+     "quantity": 1
+    },
+    {
+     "productId": "p_02159",
+     "quantity": 1
+    },
+    {
+     "productId": "p_02161",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_028",
+   "daysAgo": 96,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00095",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00104",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01157",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_029",
+   "daysAgo": 103,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00441",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00453",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00792",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00975",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01074",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_030",
+   "daysAgo": 110,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_031",
+   "daysAgo": 118,
+   "items": [
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00104",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00441",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01073",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01157",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_032",
+   "daysAgo": 127,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_033",
+   "daysAgo": 136,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00794",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00974",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01073",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01084",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_034",
+   "daysAgo": 145,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00094",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00096",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01157",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01158",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_035",
+   "daysAgo": 155,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00004",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00794",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00799",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01073",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_036",
+   "daysAgo": 166,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_037",
+   "daysAgo": 178,
+   "items": [
+    {
+     "productId": "p_00013",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00092",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00095",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00338",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00983",
+     "quantity": 2
+    },
+    {
+     "productId": "p_01073",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01084",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_038",
+   "daysAgo": 190,
+   "items": [
+    {
+     "productId": "p_00009",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00014",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00335",
+     "quantity": 1
+    }
+   ]
+  },
+  {
+   "orderId": "o_039",
+   "daysAgo": 201,
+   "items": [
+    {
+     "productId": "p_00004",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00009",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00340",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00792",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00794",
+     "quantity": 2
+    }
+   ]
+  },
+  {
+   "orderId": "o_040",
+   "daysAgo": 212,
+   "items": [
+    {
+     "productId": "p_00001",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00013",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00094",
+     "quantity": 2
+    },
+    {
+     "productId": "p_00334",
+     "quantity": 1
+    },
+    {
+     "productId": "p_00343",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01152",
+     "quantity": 1
+    },
+    {
+     "productId": "p_01153",
+     "quantity": 1
+    }
+   ]
+  }
+ ]
+}
