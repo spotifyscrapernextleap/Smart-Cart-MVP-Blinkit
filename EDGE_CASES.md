@@ -1,0 +1,162 @@
+# Smart Cart — Edge Case Register
+
+Every failure mode identified across the build, with the mitigation and the phase
+that owns it. Written after Phase 0, from the build spec plus what the real data
+turned out to look like.
+
+**How to use this.** Each phase README must state which of these it closed. An
+entry is not closed because code exists that *should* handle it — it is closed
+when something was run that would have failed before the fix.
+
+**Severity**
+
+| | Meaning |
+|---|---|
+| **S1** | Breaks the demo, or breaks the feature's core claim. Cannot ship. |
+| **S2** | Visible defect an evaluator would notice. Fix before deploy. |
+| **S3** | Cosmetic, or only reachable by deliberate abuse. Fix if cheap. |
+
+**Status:** `open` · `mitigated` (handled in code) · `accepted` (known, deliberately not fixed) · `needs-decision` (blocked on a product call)
+
+⚠️ marks a case the build spec does not cover. Those are the ones most likely to
+be missed, because there is no instruction to follow.
+
+---
+
+## A. Data layer
+
+| # | Sev | Case | Mitigation | Phase |
+|---|---|---|---|---|
+| A1 | S1 | **Product ids are positional.** Rebuilding the catalogue reshuffles `p_00001`..`p_02236`, silently invalidating all 2,236 images and every id in `history.json`. Already hit twice in Phase 0. | Fixed rebuild order documented in PROJECT_MEMORY: `reduce_catalogue.py` → delete `public/images/` → `generate_images.py` → `author_history.py` → `verify_history.js`. `verify_history.js` fails loudly on unknown ids. | 0 ✅ |
+| A2 | S2 | A product's PNG is missing → broken image icon in search, cart and panel. | `onError` handler on every product image swapping to a neutral tile-coloured placeholder. Never render a raw broken `<img>`. | 2 |
+| A3 | S2 | ⚠️ **Duplicate product names across brands.** Dedup was on `(product, brand)`, so "Almonds" can exist three times under three brands. In the cart and the panel these read as identical rows. | Always render brand alongside name in cart lines and panel rows. Keys are ids, never names. | 3, 5 |
+| A4 | S2 | **122-character product names.** Longest in the catalogue. Overflows row layouts, wraps cart lines to four lines, pushes prices off-screen at 480px. | Two-line clamp with ellipsis on panel rows and cart lines; full name only on the search card. Test with `p_01774`-class names specifically. | 2, 3, 5 |
+| A5 | S3 | Non-ASCII in names (`é`, `₹`, `&`) breaking JSON, image text or Fuse matching. | Files written UTF-8 and read UTF-8; Pillow falls back per-glyph. Verified in Phase 0 — no mojibake in generated tiles. | 0 ✅ |
+| A6 | S3 | `history.json` edited so an order is older than `accountAgeDays`, making the persona incoherent. | `verify_history.js` asserts the span; re-run after any edit. | 0 ✅ |
+
+---
+
+## B. Search
+
+| # | Sev | Case | Mitigation | Phase |
+|---|---|---|---|---|
+| B1 | **S1** | ⚠️ **Non-searchable products leaking into results.** If the Fuse index is built over the whole catalogue and `isSearchable` is filtered *after* querying, then `pedigree` returns nothing only by luck — and any relevance-ranked query can surface Pet Store or Beauty. **This single bug destroys the entire premise of the feature**, because the "undiscovered" categories become reachable by search. | Build the Fuse index from `catalogue.filter(p => p.isSearchable)` **at construction**. The index must never contain a non-searchable product. Add an assertion in `search.ts` that the indexed count equals the searchable count (1,558). | 2 |
+| B2 | S2 | ⚠️ **Alias rewriting inside longer words.** A naive `String.replace` turns `dalchini` into `dal pulses lentilchini`, and `andaman` into `eggman`. My alias map contains short keys (`dal`, `tel`, `anda`) that are substrings of real words. | Rewrite on **whole tokens only**, and match multi-word keys (`cold drink`, `kapde dhone`) as phrases before single tokens. Longest key first. Unit-test `dalchini`, `andaman`, `atta noodles`. | 2 |
+| B3 | S2 | Empty or whitespace-only query, or `/search` with no `?q=`. | Render a prompt state, not an empty grid. Never call Fuse with `""`. | 2 |
+| B4 | S2 | Zero results for a valid query (`shampoo`, `phenyl` — both genuinely absent from the searchable set). | Explicit empty state naming the query. This is *correct behaviour* for `pedigree` and must not read as an error. | 2 |
+| B5 | S3 | One- or two-character queries return noise at threshold 0.4 across 1,558 items. | Require ≥2 characters before querying; below that show the prompt state. | 2 |
+| B6 | S3 | Very long or URL-encoded `?q=` value. | React escapes by default. Never use `dangerouslySetInnerHTML`. Clamp displayed query length. | 2 |
+| B7 | S3 | Result cap of 40 hides product 41+. | Accepted — spec'd. Show the count so the cap is legible. | 2 |
+
+---
+
+## C. Cart and storage
+
+| # | Sev | Case | Mitigation | Phase |
+|---|---|---|---|---|
+| C1 | **S1** | **Hydration mismatch.** Reading `localStorage` during render makes the server produce an empty cart and the client a full one. React throws a hydration error and the page can blank. | All storage reads happen in `useEffect`, never during render. First paint is always the empty/skeleton state. | 1 |
+| C2 | **S1** | ⚠️ **Cart holds a productId that no longer exists** — stale `localStorage` from before a catalogue rebuild, which given A1 is near-certain during development. `getProduct(id)` returns `undefined` and the cart page crashes on `.price`. | `readCart()` filters out ids absent from the catalogue and rewrites storage. Never trust persisted ids. Same guard on the panel cache. | 3 |
+| C3 | S2 | `localStorage` unavailable — Safari private mode, disabled cookies, quota exceeded. | `storage.ts` wraps every access in try/catch and degrades to in-memory. The app must run, losing only persistence. | 1 |
+| C4 | S2 | Corrupt JSON in any `sc_*` key. | Typed wrapper catches parse errors, clears that key, returns the default. | 1 |
+| C5 | S2 | Negative, zero, fractional or absurd quantities via direct storage editing. | Clamp to integer 1..99 on read and write. Quantity 0 removes the line. | 3 |
+| C6 | S3 | `?reset=1` clearing keys but leaving the param in history, so a back-navigation re-clears. | `history.replaceState` to strip the param after clearing. | 1 |
+| C7 | S3 | Panel cache grows unbounded — one entry per distinct cart signature. | Cap `sc_panel_cache` at the most recent ~20 signatures. | 5 |
+
+---
+
+## D. Recommendation engine
+
+The load-bearing section. Every rule here is one the spec says must be enforced by
+code rather than by the model.
+
+| # | Sev | Case | Mitigation | Phase |
+|---|---|---|---|---|
+| D1 | **S1** | ⚠️ **Products already in the cart can be recommended.** The spec never excludes cart contents from shortlists. If the persona's cart holds dog food and `pet-store` is dormant, the panel can recommend the exact product sitting above it. Every slot in this panel is supposed to point *away* from the current basket — this is the idea doc's stated non-goal #3, violated by omission. | Exclude all cart productIds from every shortlist, before the price ceiling. | 4 |
+| D2 | **S1** | ⚠️ **Fewer than 2 tiles of a slot type survive filtering.** Spec says "proceed with what exists and let the fallback fill remaining positions" but never says *what* fills an unfillable A slot. Left undefined, the panel renders 3 rows and the 2+2 guarantee silently breaks. | Explicit rule, decided now: **the panel always renders 4 rows.** If slot type A cannot supply 2, backfill from type B and vice versa. The `slot` field on the row and on every event reports what the row **actually is**, never what position it occupies — otherwise slot-level metrics, the feature's whole defence, become fiction. | 4 |
+| D3 | **S1** | Durable the persona owns appears as a dormant candidate. | Exclude where `ownedProductIds.has(id) && !isConsumable`, before ranking. Observable case is `p_02159` Padded Harness, rank 3 in `pet-store`. | 4 |
+| D4 | **S1** | Never-bought product priced above the ceiling reaches the model. | Filter at shortlist construction, never in the prompt. The model is then structurally incapable of violating it. | 4 |
+| D5 | **S1** | Two rows from the same tile — the diversity constraint. | Shortlists are built one per tile and each tile can contribute one row; enforced by construction, then re-asserted in validation. | 4, 6 |
+| D6 | **S2** | ⚠️ **Never-bought tile selection is degenerate** (PROJECT_MEMORY D7). All 17 tiles tie at `bestsellerRank` 1, so ordering collapses to array order and offers oil, dry fruits, meat and kitchenware — none of the categories the feature exists to surface. | **Needs a decision in Phase 4.** Candidate tie-break: rank never-bought tiles by section distance from the cart's sections, so a grocery cart surfaces Beauty/Pet/Electronics rather than more grocery. Whatever is chosen gets logged. | 4 |
+| D7 | S2 | **Thin shortlists at a small cart.** At the ₹100 floor, `bath-body` has 4 products, `beauty-cosmetics` 5, `chicken-meat-fish` 5, `hair` 7, `skin-face` 7 — well under `SHORTLIST_SIZE` 12. Browse & Replace then opens with 3 alternatives. | Verified no tile is *empty* at ₹100, so the panel always fills. Accept short sheets; if a shortlist has <4 entries, prefer the next tile. | 4, 7 |
+| D8 | S2 | Empty cart on `/cart` — reachable by direct URL. Subtotal 0, signature `""`, ceiling falls to the ₹100 floor. | Spec mandates no minimum cart size, so the panel still renders. Confirm the empty-cart page has a sane layout and the signature is a defined constant, not `undefined`. | 4, 5 |
+| D9 | S3 | Entire top-12 of a dormant tile are owned durables, shrinking the shortlist to nothing. | Covered by the drop-tile-and-take-the-next rule. Not reachable with the current persona. | 4 |
+
+---
+
+## E. Model layer
+
+| # | Sev | Case | Mitigation | Phase |
+|---|---|---|---|---|
+| E1 | **S1** | **`GROQ_API_KEY` leaking to the client.** Referenced in a client component, or prefixed `NEXT_PUBLIC_`, and the key ships in the browser bundle. | Read **only** in `src/app/api/recommend/route.ts`. Grep the built bundle for `gsk_` before deploy. `.env.local` is gitignored — verified in Phase 0. | 6, 9 |
+| E2 | **S1** | ⚠️ **A never-bought reason line claiming user history** — "you ordered this before" about a category the user has never bought from. This is a direct lie to the user, on the slot type whose entire job is earning trust. The spec states the rule in the prompt but validates only length. | Validate never-bought reasons against a second-person-history pattern (`you `, `your `, `again`, `re-order`, `last time`, `used to`). Any hit is discarded and replaced with the template line. Prompt instruction alone is not enforcement. | 6 |
+| E3 | S2 | Model returns hallucinated productIds not in any shortlist. | Per-entry validation against the shortlist it claims to come from; failures replaced with the top unused product and a template reason. | 6 |
+| E4 | S2 | Model returns 2 picks from the same tile, or the same productId in both arrays. | Validate distinctness across all four rows before accepting. | 6 |
+| E5 | S2 | JSON wrapped in markdown fences despite JSON mode — a common open-weights failure. | Strip ``` fences and leading prose before `JSON.parse`. Parse failure routes to fallback. | 6 |
+| E6 | S2 | Timeout, HTTP 429, non-200, or network error. | 4s `AbortController`, try/catch, fallback path. `outcome` distinguishes `fallback_timeout` / `fallback_ratelimit` / `fallback_invalid` / `fallback_error` — on screen a fallback panel and a model panel are identical, so this field is the only way to know the model path died. | 6 |
+| E7 | S2 | Model deprecated by Groq; the catalogue rotates. | `GROQ_MODEL` pinned in `config.ts`, so it is a one-line fix. A 404 must map to `fallback_error`, not an unhandled throw. | 6 |
+| E8 | S3 | Reason line over 100 chars, or with an exclamation mark. | Length validated; punctuation stripped. Tone rules beyond that are not machine-checkable — accepted. | 6 |
+| E9 | S3 | Prompt injection via a product name in the catalogue. | Catalogue is ours and committed; names are inserted as JSON values, not free text. Low risk, noted. | 6 |
+
+---
+
+## F. Panel UI and interactions
+
+| # | Sev | Case | Mitigation | Phase |
+|---|---|---|---|---|
+| F1 | **S1** | Layout shift when the skeleton resolves, moving Bill details under the user's thumb mid-tap. | Four-row fixed-height skeleton, identical height to the resolved panel. Measure both. | 5 |
+| F2 | S2 | ⚠️ **Height still changes on ADD.** Spec forbids shift on *resolve* and separately mandates no backfill — so removing a row necessarily shrinks the panel. The two rules together still let the bill jump. | Animate the row out over ~200ms rather than removing it instantly, so the shift is legible as a consequence of the user's own tap rather than a glitch. | 5 |
+| F3 | S2 | Removing a panel-added product from the cart must restore its row **in its original position with its original slot**. | Keep the full resolved row list in state; render it minus ids currently in the cart, rather than mutating the list on add. Restoration then falls out for free. | 5 |
+| F4 | S2 | Rapid double-tap on ADD double-adds. | Disable the control while the add is in flight; cart writes keyed by productId are idempotent. | 5 |
+| F5 | S2 | Browse & Replace sheet opens with 0 or 1 alternatives (see D7). | Guard: if the shortlist minus the displayed product and minus cart contents is empty, disable the control rather than opening an empty sheet. | 7 |
+| F6 | S2 | Replacement product is already in the cart. | Exclude cart contents from the sheet, same rule as D1. | 7 |
+| F7 | S3 | Dismiss, then navigate away and back — does the panel return? | Define as **session-scoped**: dismissal persists for the visit, matching the spec's "remainder of the visit". | 5 |
+| F8 | S3 | Sticky `ViewCartBar` overlapping the iOS home indicator. | `env(safe-area-inset-bottom)` padding. Test on a real phone, not just devtools. | 3 |
+
+---
+
+## G. Events
+
+| # | Sev | Case | Mitigation | Phase |
+|---|---|---|---|---|
+| G1 | S2 | ⚠️ **React 18 StrictMode double-mounts effects in dev**, firing `panel_impression` and the recommend call twice. Inflates every metric and doubles Groq usage against a rate-limited free tier. | Guard the mount-time fetch with a ref keyed by cart signature. Verify exactly one `recommend_call` per cart in the events log. | 5, 8 |
+| G2 | S2 | `logEvent` called during SSR. | Same `typeof window` guard as all storage. | 8 |
+| G3 | S2 | Event cap of 500 drops the oldest — including the `panel_impression` that a later `panel_add` refers to, breaking attribution. | Accepted at 500 for a demo-length session. Trim on write, never mid-read. | 8 |
+| G4 | S3 | `recommend_call.latencyMs` measured client-side includes network; measured server-side does not. | Define as **client-side round trip**, since that is what the user experiences. State it in the events README. | 8 |
+
+---
+
+## H. Build and deploy
+
+| # | Sev | Case | Mitigation | Phase |
+|---|---|---|---|---|
+| H1 | **S1** | ⚠️ **`next/image` optimisation across 2,236 PNGs.** Vercel's free tier meters optimised source images; an evaluator browsing the catalogue could exhaust the quota and start serving errors mid-demo. 18.8 MB across 2,236 files. | Serve these as plain `<img>`, or set `unoptimized`. They are already flat 400×400 tiles — there is nothing for the optimiser to win. | 2, 9 |
+| H2 | S2 | Serverless function bundle size from static imports. `catalogue.json` is 0.62 MB, well under the 50 MB limit — but only because it is the *only* large static import in the route. | Confirmed safe. Do not import images or add further large static data into the route. | 4, 9 |
+| H3 | S2 | Works locally with `source: "model"`, falls back in production — wrong region, missing Vercel env var, or a latency budget that only fits on a local network. | This is exactly what the spec's Phase 9 test exists to catch. Check `recommend_call.outcome` on the deployed URL, not just that the panel renders. | 9 |
+| H4 | S2 | `.env.local` committed. | Gitignored and verified in Phase 0. Re-check `git log --all -- .env.local` before pushing. | 9 |
+| H5 | S3 | 18.8 MB of PNGs in git. | Acceptable — well under any limit, and committing them is what makes the deploy reproducible. | 9 ✅ |
+| H6 | S3 | Python 3.9 vs the spec's 3.10+. | Scripts avoid `match` and `X \| Y` runtime unions. Only affects the two local data tools, which never deploy. | 0 ✅ |
+
+---
+
+## Open decisions
+
+Three items are blocked on a product call rather than on code.
+
+| # | Decision | Recommendation |
+|---|---|---|
+| **D5 (memory)** | `Oral Care` sits in non-searchable `health-pharma`, so the spec's `colgat` search test cannot pass. | Keep the tile table; swap the typo test to a searchable brand. Flipping `health-pharma` to searchable makes oral care reachable by search, which is what the demo exists to prevent. |
+| **D6 (above)** | Never-bought tile ranking is degenerate — all 17 tiles tie. | Tie-break by section distance from the cart, so a grocery cart surfaces Beauty/Pet/Electronics. Decide in Phase 4. |
+| **D2 (above)** | What fills a slot when fewer than 2 tiles of a type survive. | Backfill across types, keep 4 rows, and report the row's true slot in events. Proposed above; flagging it because it trades the 2+2 guarantee for panel completeness. |
+
+---
+
+## Summary
+
+25 of the 47 cases are already closed or structurally prevented by Phase 0 and the
+spec's own design. The ones that need deliberate work:
+
+- **6 × S1 the spec does not mention** — B1 (search index leak), C2 (stale cart ids),
+  D1 (cart contents recommended), D2 (undefined slot backfill), E2 (false history
+  claim on never-bought rows), plus C1 (hydration).
+- **The single highest-risk item is B1.** Every other bug here degrades the demo.
+  B1 disproves its premise.

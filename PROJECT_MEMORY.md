@@ -9,6 +9,10 @@ the literal build instruction — file paths, constant names and phase order com
 from it. [`smart-cart-mvp-idea-doc.md`](smart-cart-mvp-idea-doc.md) is the product
 rationale behind the rules.
 
+**Companion register:** [`EDGE_CASES.md`](EDGE_CASES.md) lists all 47 identified
+failure modes with severity, mitigation and owning phase. Each phase README states
+which entries it closed.
+
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
