@@ -27,6 +27,10 @@ which entries it closed.
 | | |
 |---|---|
 | Node | v24.15.0, npm 11.16.0 |
+| Next.js | 16.2.12 (App Router, Turbopack) |
+| React | 19.2.4 |
+| Tailwind | v4 (via `@tailwindcss/postcss`) |
+| TypeScript | 5 |
 | Python | **3.9.9** — spec asks for 3.10+ |
 | Python packages | pandas 2.3.3, Pillow 10.2.0, openpyxl 3.1.5 |
 | Git | initialised at repo root, no remote yet |
@@ -142,5 +146,66 @@ surfaces none of them. **Phase 4 must choose a meaningful tie-break** and log it
   forced, but the scripts avoid `match` statements and `X | Y` runtime unions.
 - **`mrp` is populated but must not be rendered in v1** (spec §8) — it is reserved
   for struck-through pricing, which is explicitly deferred.
+
+---
+
+## Phase 1 — Scaffold and shell
+
+**Completed.** Spec test passes in-browser; storage suite passes 12/12. Detail in
+[`phases/phase-1-scaffold/README.md`](phases/phase-1-scaffold/README.md).
+
+Closed edge cases **C1** (hydration), **C3** (storage unavailable), **C4** (corrupt
+values), **C6** (`?reset=1` history).
+
+### Decisions
+
+**D8 — Scaffolded through a temp directory, not in place.**
+`create-next-app` refuses a non-empty target, and the repo root already held
+`data/`, `scripts/`, `phases/` and 2,236 committed images. Scaffolding into the
+scratchpad and copying only `tsconfig.json`, `next.config.ts`, `postcss.config.mjs`,
+`eslint.config.mjs`, `package.json` and the lockfile avoided any chance of the
+generator touching `public/`. `node_modules` was not copied; `npm install` ran at
+the root instead. The scaffold's `public/*.svg`, `README.md`, `AGENTS.md` and
+`CLAUDE.md` were deliberately not brought over.
+
+**D9 — Tailwind v4, so there is no `tailwind.config.ts`.**
+`create-next-app@latest` now ships Tailwind 4, which is CSS-first: configuration
+lives in an `@theme` block in `globals.css` and PostCSS runs `@tailwindcss/postcss`.
+The build spec's §5 file tree lists a `tailwind.config.ts` that this version does
+not produce. Cosmetic divergence, no behavioural effect. Next 16 likewise satisfies
+the spec's "Next.js 14+".
+
+**D10 — `config.ts` is byte-for-byte the spec's §7.4, and stays that way for now.**
+Several edge-case mitigations want new tunables — a minimum query length (B5), a
+panel-cache cap (C7), a quantity clamp (C5). None belong to Phase 1, so none were
+added. When they arrive they go **into `config.ts`** under a clearly marked section,
+never inline, because the file's stated contract is that it holds every tunable.
+
+**D11 — Storage guards are shallow and heal lazily.**
+`isCartLines` and friends check enough structure to prevent a crash, not enough to
+prove correctness — domain validation belongs where the domain rules live (Phase 3's
+`cart.ts` is what drops ids missing from the catalogue, per C2). Guards run **on
+read**, so a corrupt key stays on disk until something reads it; a bad value is
+cleared at that point so it cannot fail twice. Observed live: `sc_cart` was still
+`[[[` after a reload because nothing reads the cart until Phase 3. That is intended,
+and worth knowing before someone reports it as a bug.
+
+### Gotchas
+
+- **`storage.ts` probes rather than trusts.** Safari private mode exposes
+  `window.localStorage` and *then* throws on use, so `getStore()` performs a
+  write-and-remove probe on every access instead of checking for existence. The
+  hostile-storage test in `verify_storage.ts` fails without this.
+- **Node 24 runs TypeScript natively**, which is how the storage suite tests real
+  source with no test-runner dependency. `node phases/phase-1-scaffold/verify_storage.ts`
+  just works. Worth reusing for later phases.
+- **Reset order is load-bearing.** `AppBootstrap` calls `handleResetParam()` before
+  `getSession()`. Reversed, the reset wipes a session that was created microseconds
+  earlier and immediately re-creates it — the clear appears to do nothing.
+- **`?reset=1` regenerates the session rather than leaving `sc_session` empty.**
+  Correct behaviour, but it means "all four keys are null" is the wrong assertion
+  for that test; three are null and the fourth holds a *new* id.
+- **`src/app/page.tsx` is a diagnostic placeholder** that prints session and key
+  state. Phase 2 replaces it wholesale with Home. Do not build on it.
 
 ---
