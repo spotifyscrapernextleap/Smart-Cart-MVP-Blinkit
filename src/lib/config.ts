@@ -33,8 +33,16 @@ export const MODEL_TIMEOUT_MS = 4000;
 
 export const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 
-/** Pinned so a Groq model deprecation is a one-line fix. See spec §7.5. */
-export const GROQ_MODEL = "llama-3.3-70b-versatile";
+/**
+ * Pinned so a Groq model deprecation is a one-line fix. See spec §7.5.
+ *
+ * The spec names `llama-3.3-70b-versatile`; this project runs GPT-OSS 120B
+ * instead — an owner decision, logged as PROJECT_MEMORY D32. It is a larger
+ * open-weights model with materially better instruction-following on the two
+ * things this prompt actually needs: staying inside a supplied id list, and not
+ * writing a history claim into a never-bought line.
+ */
+export const GROQ_MODEL = "openai/gpt-oss-120b";
 
 export const MODEL_TEMPERATURE = 0.3;
 
@@ -106,3 +114,50 @@ export const PANEL_CACHE_MAX_ENTRIES = 20;
  * consequence of the user's own tap rather than a glitch. (EDGE_CASES F2)
  */
 export const PANEL_ROW_EXIT_MS = 220;
+
+/**
+ * Reasoning budget for GPT-OSS. Not a parameter the spec anticipated, because
+ * `llama-3.3-70b-versatile` is not a reasoning model and GPT-OSS is (D32).
+ *
+ * Reasoning tokens are generated before the first content token, so they are
+ * spent entirely inside `MODEL_TIMEOUT_MS` (4000) and buy nothing the user can
+ * see. The task is a constrained pick from a supplied list, not a problem that
+ * rewards deliberation — so this stays at "low". Raise it only with a measured
+ * latency number in hand.
+ */
+export const MODEL_REASONING_EFFORT = "low";
+
+/**
+ * Ceiling on the completion. Four picks and four short lines is well under 300
+ * tokens; the headroom is for the reasoning block above. A cap matters here
+ * because an unbounded reasoning model can spend the whole latency budget
+ * thinking and return nothing before the abort.
+ */
+export const MODEL_MAX_COMPLETION_TOKENS = 1024;
+
+/**
+ * Products per shortlist actually shown to the model.
+ *
+ * `SHORTLIST_SIZE` (12) is the depth Browse & Replace needs, and the response
+ * still carries all twelve. The prompt does not: measured against the live API,
+ * seven shortlists of twelve cost **4,729 prompt tokens**, and the Groq free
+ * tier's binding limit is 8,000 tokens per minute — so the second checkout
+ * visit inside a minute returned HTTP 429 and served a fallback panel. An
+ * evaluator clicking through two carts would have seen the model path die.
+ *
+ * Six halves that. The products dropped are ranks 7–12 of a list already sorted
+ * by bestseller rank, so what the model loses is the tail it was least likely
+ * to pick, while the choice it exists to make — which of the plausible items
+ * suits *this* cart — is untouched. (PROJECT_MEMORY D33)
+ */
+export const MODEL_SHORTLIST_DEPTH = 6;
+
+/**
+ * Reason-line bounds. The spec states both — §4 Step 9 validates ≤100
+ * characters, §4 Step 8 instructs the model to write at most 8 words — but as
+ * prose rather than as constants. They are tunables, so they live here (D10).
+ * The word limit is an instruction to the model; the character limit is the one
+ * enforced in validation, because it is the one that protects the layout.
+ */
+export const REASON_MAX_CHARS = 100;
+export const REASON_MAX_WORDS = 8;

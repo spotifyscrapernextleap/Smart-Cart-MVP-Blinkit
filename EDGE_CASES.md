@@ -89,15 +89,17 @@ code rather than by the model.
 
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
-| E1 | **S1** | **`GROQ_API_KEY` leaking to the client.** Referenced in a client component, or prefixed `NEXT_PUBLIC_`, and the key ships in the browser bundle. | Read **only** in `src/app/api/recommend/route.ts`. Grep the built bundle for `gsk_` before deploy. `.env.local` is gitignored — verified in Phase 0. | 6, 9 |
-| E2 | **S1** | ⚠️ **A never-bought reason line claiming user history** — "you ordered this before" about a category the user has never bought from. This is a direct lie to the user, on the slot type whose entire job is earning trust. The spec states the rule in the prompt but validates only length. | Validate never-bought reasons against a second-person-history pattern (`you `, `your `, `again`, `re-order`, `last time`, `used to`). Any hit is discarded and replaced with the template line. Prompt instruction alone is not enforcement. | 6 |
-| E3 | S2 | Model returns hallucinated productIds not in any shortlist. | Per-entry validation against the shortlist it claims to come from; failures replaced with the top unused product and a template reason. | 6 |
-| E4 | S2 | Model returns 2 picks from the same tile, or the same productId in both arrays. | Validate distinctness across all four rows before accepting. | 6 |
-| E5 | S2 | JSON wrapped in markdown fences despite JSON mode — a common open-weights failure. | Strip ``` fences and leading prose before `JSON.parse`. Parse failure routes to fallback. | 6 |
-| E6 | S2 | Timeout, HTTP 429, non-200, or network error. | 4s `AbortController`, try/catch, fallback path. `outcome` distinguishes `fallback_timeout` / `fallback_ratelimit` / `fallback_invalid` / `fallback_error` — on screen a fallback panel and a model panel are identical, so this field is the only way to know the model path died. | 6 |
-| E7 | S2 | Model deprecated by Groq; the catalogue rotates. | `GROQ_MODEL` pinned in `config.ts`, so it is a one-line fix. A 404 must map to `fallback_error`, not an unhandled throw. | 6 |
-| E8 | S3 | Reason line over 100 chars, or with an exclamation mark. | Length validated; punctuation stripped. Tone rules beyond that are not machine-checkable — accepted. | 6 |
-| E9 | S3 | Prompt injection via a product name in the catalogue. | Catalogue is ours and committed; names are inserted as JSON values, not free text. Low risk, noted. | 6 |
+| E1 | ✅ **S1** | **`GROQ_API_KEY` leaking to the client.** Referenced in a client component, or prefixed `NEXT_PUBLIC_`, and the key ships in the browser bundle. | Read **only** in `src/app/api/recommend/route.ts`. Verified after a production build: `grep -rl "gsk_" .next/static/` and the same for `GROQ_API_KEY` both return nothing, and the only source occurrence is `route.ts:91`. Re-check before deploy. | 6 ✅, 9 |
+| E2 | ✅ **S1** | ⚠️ **A never-bought reason line claiming user history** — "you ordered this before" about a category the user has never bought from. This is a direct lie to the user, on the slot type whose entire job is earning trust. The spec states the rule in the prompt but validates only length. | `CLAIMS_HISTORY` in `validate.ts` — the self-tested shape from Phase 4, **not** a ban on "you", which would reject the spec's own correct line. A hit discards the **line** and substitutes the template; the product survives, because the lie was in the sentence and not in the choice. | 6 |
+| E3 | ✅ S2 | Model returns hallucinated productIds not in any shortlist. | Per-entry validation against the shortlist it claims to come from; failures replaced from the next unused shortlist of the same type with a template reason. The rejected line is discarded with its pick — a reason written about a product no longer shown is its own defect. | 6 |
+| E4 | ✅ S2 | Model returns 2 picks from the same tile, or the same productId in both arrays. | A tile already used rejects the later pick. A dormant id offered as a never-bought pick is rejected too, since the search is scoped to that slot's own shortlists. | 6 |
+| E5 | ✅ S2 | JSON wrapped in markdown fences despite JSON mode — a common open-weights failure. | `extractJson` strips ``` fences, leading prose and inline `<think>` blocks, then locates the outer braces rather than assuming them. Parse failure routes to fallback. | 6 |
+| E6 | ✅ S2 | Timeout, HTTP 429, non-200, or network error. | 4s `AbortController`, try/catch, fallback path. `outcome` distinguishes `fallback_timeout` / `fallback_ratelimit` / `fallback_invalid` / `fallback_error`. Three of the four observed live; 429 arrived unprompted on the first day of use (see E11). | 6 |
+| E7 | ✅ S2 | Model deprecated by Groq; the catalogue rotates. | `GROQ_MODEL` pinned in `config.ts` — already exercised once, by the switch to GPT-OSS 120B (D32), which was a one-line change. A 404 maps to `fallback_error`, not an unhandled throw. | 6 |
+| E8 | ✅ S3 | Reason line over 100 chars, or with an exclamation mark. | Length rejected against `REASON_MAX_CHARS`; exclamation marks stripped rather than rejected, since one "!" is not worth discarding a good line. Tone rules beyond that are not machine-checkable — accepted. | 6 |
+| E9 | ✅ S3 | Prompt injection via a product name in the catalogue. | The whole payload is `JSON.stringify`d, so a name arrives as a string value and never as a line of the prompt. Catalogue is ours and committed. Low risk, noted. | 6 |
+| **E10** | ✅ **S1** | ⚠️ **A dormant reason line claiming the user bought THIS product.** E2's failure mode on the other slot, and **the build spec's own example response contains it** — §4 Step 8 shows `"You used to order this regularly"` as a valid dormant line. The product on a dormant row is chosen by bestseller rank and is usually *not* one the persona ever bought, so that sentence is false about the item on screen. The tile-level claim is the only true one available. | A slot-A line must contain its `tileLabel`, or it is discarded for the template. A positive test, not a blacklist: a line that names the category cannot be read as a claim about the item. | 6 |
+| **E11** | S2 | ⚠️ **The free tier's binding limit is tokens per minute, not requests.** Measured on the live account: 1,000 requests/day but only **8,000 tokens/minute**. The original prompt cost 4,729 prompt tokens, so the *second* cart visit within a minute returned 429 and served a fallback panel — reproduced within minutes of the first working call. | Prompt trimmed to `MODEL_SHORTLIST_DEPTH` (6) and un-indented: 2,072 tokens, three calls a minute. `sc_panel_cache` already prevents a repeat visit to the same cart from calling at all. Residual risk accepted for a demo; `fallback_ratelimit` names it when it happens. | 6, 9 |
 
 ---
 
@@ -155,15 +157,19 @@ All three original items are now resolved. One new one is open.
 
 ## Summary
 
-Two entries were withdrawn and three added after decisions D12–D14. Current shape:
+Two entries were withdrawn and five added across the build. Current shape after
+Phase 6: **51 closed, 1 withdrawn, 8 open.**
 
-- **6 × S1 the spec does not mention** — C1 (hydration), C2 (stale cart ids),
+- **7 × S1 the spec does not mention** — C1 (hydration), C2 (stale cart ids),
   D1 (cart contents recommended), **D1a (cart *tiles* recommended)**, D2 (undefined
-  slot backfill), E2 (false history claim on never-bought rows).
-- **The highest-risk item is now D1a.** B1 held that title while search was gated;
-  with the gate gone, the way this demo fails in front of an evaluator is somebody
-  searching `pedigree`, adding dog food, opening the cart, and being recommended
-  more Pet Store. That single screenshot says the panel does not read the cart.
-- **Phase 2 carries new weight.** Search is no longer a narrow path to a curated
-  set — it is the surface an evaluator uses to probe the whole catalogue, and
-  coverage gaps (B4) now show up as missing products rather than as design.
+  slot backfill), E2 (false history claim on never-bought rows), **E10 (false
+  history claim on dormant rows — which the spec's own example commits)**.
+- **Every S1 is now closed.** The two that were open through Phase 5, E1 and E2,
+  were closed in Phase 6 and verified: no key in the built client bundle, and no
+  purchase claim reachable on a slot-B line.
+- **The remaining open items are Phase 7 (F5, F6), Phase 8 (G2, G3, G4) and
+  Phase 9 (H3, H4), plus D7 and H2.** None is an S1.
+- **E11 is the one to watch before a demo.** It is not a code defect — the panel
+  degrades correctly — but it is the reason a live walkthrough can show
+  `fallback_ratelimit` on the second cart while everything looks fine on the
+  first.

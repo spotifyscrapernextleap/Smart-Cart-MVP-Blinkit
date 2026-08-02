@@ -10,6 +10,18 @@
 const DAYS_PER_WEEK = 7;
 
 /**
+ * The single place a dormancy gap becomes a number of weeks.
+ *
+ * Exported because the prompt hands the model a `weeksAgo` value to write into
+ * its own dormant line (spec §4 Step 8), and that value has to be the same one
+ * the template would have produced — otherwise a model line and a template line
+ * on the same tile can disagree about how long ago the user was last here.
+ */
+export function weeksAgoFrom(daysAgo: number): number {
+  return Math.max(1, Math.round(daysAgo / DAYS_PER_WEEK));
+}
+
+/**
  * "You last ordered from Pet Store 7 weeks ago"
  *
  * References the *tile*, never the specific product: the product being shown is
@@ -18,7 +30,7 @@ const DAYS_PER_WEEK = 7;
  */
 export function dormantReason(tileLabel: string, daysAgo: number | null): string {
   if (daysAgo === null) return `You have not ordered from ${tileLabel} recently`;
-  const weeks = Math.max(1, Math.round(daysAgo / DAYS_PER_WEEK));
+  const weeks = weeksAgoFrom(daysAgo);
   return `You last ordered from ${tileLabel} ${weeks} week${weeks === 1 ? "" : "s"} ago`;
 }
 

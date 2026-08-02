@@ -21,7 +21,7 @@ import { dormantReason, neverBoughtReason } from "./templates.ts";
 
 /** Rows are ordered A, A, B, B — dormant first — and positions follow that order. */
 export const PANEL_ROW_COUNT = 4;
-const SLOTS_PER_TYPE = PANEL_ROW_COUNT / 2;
+export const SLOTS_PER_TYPE = PANEL_ROW_COUNT / 2;
 
 function reasonFor(shortlist: Shortlist): string {
   return shortlist.slot === "A"
@@ -62,25 +62,34 @@ export function selectPanelShortlists(set: ShortlistSet): Shortlist[] {
 /**
  * Builds rows from already-chosen products.
  *
- * Shared with the model path, which supplies its own product choice and reason
- * per shortlist. `chooseProduct` returning undefined falls back to the
- * top-ranked product, so a bad model pick degrades to the deterministic one.
+ * Shared with the model path, which supplies its own product choice and,
+ * optionally, its own reason line per shortlist. `chooseProduct` returning
+ * undefined falls back to the top-ranked product, so a bad model pick degrades
+ * to the deterministic one.
+ *
+ * **A reason only survives alongside the product it was written about.** If the
+ * returned id is not in this shortlist it is ignored — but so is the line, which
+ * was written about a product that is no longer being shown. Keeping the two
+ * independent would leave the panel displaying the top-ranked product wearing a
+ * sentence about a different one, which is the plausible-looking version of the
+ * failure the id check exists to prevent.
  */
 export function buildRows(
   shortlists: Shortlist[],
-  chooseProduct?: (shortlist: Shortlist) => { productId: ProductId; reason: string } | undefined
+  chooseProduct?: (shortlist: Shortlist) => { productId: ProductId; reason?: string } | undefined
 ): PanelRow[] {
   return shortlists.map((shortlist, index) => {
     const chosen = chooseProduct?.(shortlist);
-    const product =
-      (chosen && shortlist.products.find((p) => p.id === chosen.productId)) ??
-      shortlist.products[0];
+    const picked = chosen
+      ? shortlist.products.find((p) => p.id === chosen.productId)
+      : undefined;
+    const product = picked ?? shortlist.products[0];
 
     return {
       productId: product.id,
       slot: shortlist.slot,
       tile: shortlist.tile,
-      reason: chosen?.reason ?? reasonFor(shortlist),
+      reason: picked && chosen?.reason ? chosen.reason : reasonFor(shortlist),
       position: index + 1,
     };
   });

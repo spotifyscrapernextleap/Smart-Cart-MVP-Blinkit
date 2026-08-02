@@ -9,7 +9,7 @@ conversation.** Read this file top to bottom before touching anything.
 
 ## START HERE — current state
 
-**Phases 0–5 are complete, tested and committed. Phase 6 is next.**
+**Phases 0–6 are complete, tested and committed. Phase 7 is next.**
 
 | Phase | State | Test result |
 |---|---|---|
@@ -19,31 +19,30 @@ conversation.** Read this file top to bottom before touching anything.
 | 3 — Cart | ✅ committed | 22/22 cart |
 | 4 — Recommendation engine (deterministic) | ✅ committed | 76/76 recommend |
 | 5 — Panel UI | ✅ committed | 11/11 panel cache |
-| **6 — Model layer** | **next** | needs `GROQ_API_KEY` |
-| 7 — Browse & Replace | not started | |
-| 8 — Events | not started | (partially done — see below) |
+| 6 — Model layer | ✅ committed | 80/80 model |
+| **7 — Browse & Replace** | **next** | |
+| 8 — Events | not started | (mostly done — see below) |
 | 9 — Deploy | not started | needs GitHub + Vercel |
 
-**158 checks pass across five suites. `tsc`, `eslint --max-warnings 0` and
-`next build` are all clean. Working tree is clean; 8 commits on `master`, no remote.**
+**238 checks pass across six suites. `tsc`, `eslint --max-warnings 0` and
+`next build` are all clean.**
 
-**The app works end to end right now** with no API key: search → add to cart →
-checkout → a four-row Smart Cart panel with real reason lines. The model layer is
-an enhancement on top of a working deterministic path, exactly as the spec
-intends.
+**The app works end to end right now, with the model live**: search → add to
+cart → checkout → a four-row Smart Cart panel whose products and reason lines
+are chosen by GPT-OSS 120B, degrading to the deterministic panel on any failure.
+Measured round trip 1.3–2.0s against a 4s abort.
 
 ### The immediate next action
 
-Phase 6 needs a Groq key in `.env.local` (gitignored, already covered):
+Phase 7 — Browse & Replace. The response already carries the full 12-deep
+`shortlists` for the four chosen tiles, so the sheet opens from memory with **no
+second network call**. See "What is already prepared for Phases 7–9" near the end
+of this file before writing anything.
 
-```
-GROQ_API_KEY=gsk_...
-```
-
-Then: `npm install openai`, build `src/lib/recommend/prompt.ts` and
-`validate.ts`, and wire them into `src/app/api/recommend/route.ts`. **Much of
-Phase 6 is already scaffolded — see "What is already prepared for Phases 6–9" near
-the end of this file before writing anything.**
+**Watch out for one thing first:** `MODEL_SHORTLIST_DEPTH` (6) now means the
+model sees only the head of each shortlist while the response still carries all
+12. Browse & Replace reads the full 12 — that is deliberate, and the two numbers
+are not interchangeable.
 
 ---
 
@@ -60,15 +59,15 @@ from it. [`smart-cart-mvp-idea-doc.md`](smart-cart-mvp-idea-doc.md) is the produ
 rationale behind the rules. Where they conflict with each other or with reality,
 the resolution is a numbered decision below.
 
-**Companion register:** [`EDGE_CASES.md`](EDGE_CASES.md) — 58 identified failure
-modes with severity, mitigation and owning phase. **39 closed, 1 withdrawn, 18
-open.** Each phase README states which it closed.
+**Companion register:** [`EDGE_CASES.md`](EDGE_CASES.md) — 60 identified failure
+modes with severity, mitigation and owning phase. **51 closed, 1 withdrawn, 8
+open, and every S1 is closed.** Each phase README states which it closed.
 
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
-- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D31 exist;
-  the next new decision is D32.**
+- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D33 exist;
+  the next new decision is D34.**
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
 - Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
@@ -93,8 +92,12 @@ node phases/phase-2-catalogue-search/verify_search.ts
 node phases/phase-3-cart/verify_cart.ts
 node phases/phase-4-recommend/verify_recommend.ts
 node phases/phase-5-panel-ui/verify_panel_cache.ts
+node phases/phase-6-model/verify_model.ts
 node phases/phase-0-data/verify_history.js
 ```
+
+`verify_model.ts` needs no key and makes no network call — it drives the real
+validator with hand-written model responses.
 
 Exercise the recommend route directly:
 
@@ -121,11 +124,13 @@ python scripts/reduce_catalogue.py && rm -rf public/images && python scripts/gen
 | React | 19.2.4 |
 | Tailwind | v4 (via `@tailwindcss/postcss`) — CSS-first, **no `tailwind.config.ts`** |
 | TypeScript | 5 |
-| Runtime deps | `next`, `react`, `react-dom`, `fuse.js` — nothing else |
+| Runtime deps | `next`, `react`, `react-dom`, `fuse.js`, `openai` (7.3, Groq-compatible client) |
 | Python | **3.9.9** — spec asks for 3.10+ |
 | Python packages | pandas 2.3.3, Pillow 10.2.0, openpyxl 3.1.5 |
-| Git | `master`, 8 commits, **no remote yet** |
-| Groq key | **not yet obtained** — first needed in Phase 6 |
+| Git | `master`, **no remote yet** |
+| Groq key | present in `.env.local` (gitignored, never committed — verified) |
+| Model | **`openai/gpt-oss-120b`**, not the spec's Llama — see D32 |
+| Free-tier limits (measured) | 1,000 requests/day, **8,000 tokens/minute** — tokens bind first |
 
 ---
 
@@ -158,12 +163,15 @@ src/lib/
     shortlist.ts            tile selection, all four exclusions, price ceiling
     templates.ts            template reason lines
     fallback.ts             panel assembly, slot allocation, backfill
+    prompt.ts               system prompt + the JSON payload sent to the model
+    validate.ts             JSON extraction, per-entry validation, per-tile resolution
 src/app/
   layout.tsx                480px shell, AppBootstrap
   page.tsx                  HOME
   search/page.tsx           SEARCH RESULTS
   cart/page.tsx             CHECKOUT — cart lines → SmartCartPanel → BillDetails
-  api/recommend/route.ts    THE ONLY SERVER-SIDE FILE. Only place GROQ_API_KEY may be read.
+  api/recommend/route.ts    THE ONLY SERVER-SIDE FILE. Only place GROQ_API_KEY is read.
+                            Model call, 4s abort, every fallback route.
 src/components/             AppHeader, SearchBar, CategoryGrid, ProductCard, ProductImage,
                             QuantityStepper, CartLine, BillDetails, ViewCartBar,
                             SmartCartPanel, RecommendationRow, AppBootstrap
@@ -225,6 +233,11 @@ Every one of these is enforced by code, not by the model, and each has a test.
    its tile (D1a).
 7. **Never-bought reason lines claim no purchase history.** See the `CLAIMS_HISTORY`
    gotcha under Phase 4 — do not implement this by banning the word "you".
+7a. **Dormant reason lines name the tile, never the product.** The product on a
+   dormant row is chosen by bestseller rank and is usually not one the persona
+   ever bought, so "you used to order this" is false — even though the build
+   spec's own example response contains exactly that line. Enforced by requiring
+   the tile label to appear in the line. (E10)
 8. **The panel does not recompute while the user is on the page.** Computed once
    on mount, cached by cart signature.
 9. **`GROQ_API_KEY` is readable only inside `src/app/api/recommend/route.ts`**, and
@@ -240,13 +253,18 @@ Every one of these is enforced by code, not by the model, and each has a test.
 Spec §7.4 verbatim: `DORMANCY_THRESHOLD_DAYS` 30 · `TENURE_MIN_DAYS` 180 ·
 `DORMANT_TILES_OFFERED` 3 · `NEVERBOUGHT_TILES_OFFERED` 4 · `SHORTLIST_SIZE` 12 ·
 `PRICE_CEILING_RATIO` 0.5 · `PRICE_CEILING_FLOOR` 100 · `MODEL_TIMEOUT_MS` 4000 ·
-`GROQ_BASE_URL` · `GROQ_MODEL` `llama-3.3-70b-versatile` · `MODEL_TEMPERATURE` 0.3 ·
+`GROQ_BASE_URL` · `MODEL_TEMPERATURE` 0.3 ·
 `SEARCH_THRESHOLD` 0.4 · `SEARCH_MAX_RESULTS` 40 · `EVENT_LOG_CAP` 500
+
+One spec value changed: **`GROQ_MODEL` is `openai/gpt-oss-120b`**, not
+`llama-3.3-70b-versatile` (D32).
 
 Added beyond the spec, in a marked section (D10): `SEARCH_MAX_SCORE` 0.35 (D16) ·
 `MIN_CART_QUANTITY` 1 / `MAX_CART_QUANTITY` 99 (C5) ·
 `MAX_TILES_PER_SECTION_OFFERED` 2 (D23) · `PANEL_CACHE_MAX_ENTRIES` 20 (C7) ·
-`PANEL_ROW_EXIT_MS` 220 (F2)
+`PANEL_ROW_EXIT_MS` 220 (F2) · `MODEL_REASONING_EFFORT` "low" (D32) ·
+`MODEL_MAX_COMPLETION_TOKENS` 1024 (D32) · `MODEL_SHORTLIST_DEPTH` 6 (D33) ·
+`REASON_MAX_CHARS` 100 / `REASON_MAX_WORDS` 8 (spec prose, made constants)
 
 ---
 
@@ -962,35 +980,116 @@ Folding it into `fallback_error` would bury it behind genuine failures.
 
 ---
 
-## What is already prepared for Phases 6–9
+## Phase 6 — Model layer
 
-Read this before writing Phase 6. Several hooks exist specifically so the model
-layer drops in without restructuring anything.
+**Completed.** Spec test passes live against the Groq API on every clause;
+verification suite passes 80/80. Detail in
+[`phases/phase-6-model/README.md`](phases/phase-6-model/README.md).
 
-### Phase 6 — Model layer
+Closed edge cases **E1** (key leak), **E2** (false history claim on never-bought),
+**E3** (hallucinated ids), **E4** (duplicate tile / cross-slot picks), **E5**
+(fenced JSON), **E6** (timeout / 429 / non-200), **E7** (model deprecation),
+**E8** (line length), **E9** (prompt injection) — and added and closed **E10**,
+plus added **E11** (token-per-minute limit) as accepted.
 
-- **`buildRows()` in `fallback.ts` already accepts an optional `chooseProduct`
-  callback** (D24). The model path passes a function returning `{ productId,
-  reason }` per shortlist. A returned id that is **not in that shortlist is
-  ignored** and the top-ranked product is used instead — so a hallucinated id
-  degrades to the deterministic answer at assembly time, before validation.
-- **`RecommendResponse.outcome` already exists and the route already sets it**
-  (D31). Today it returns `"fallback_nokey"`. Phase 6 replaces that with the real
-  per-attempt outcome. The client already logs whatever it receives.
-- **`RecommendOutcome` already has all six values**, including the added
-  `fallback_nokey`.
-- **The client already logs `recommend_call` with a real `latencyMs`** measured as
-  the client-side round trip.
-- **`CLAIMS_HISTORY` in `verify_recommend.ts` is the validator shape to reuse for
-  E2** — it is already self-tested. Do not re-derive it, and do not simplify it to
-  banning "you".
-- Success criterion beyond the spec's own test: at a ₹100 ceiling the
-  deterministic path currently surfaces *"Peristaltic Nipple — 'S' Hole"* from
-  `baby-care`. Every rule holds, but it is not a *plausible* suggestion. The model
-  choosing better **from the same shortlist** is what Phase 6 is for.
-- Spec §7.5: treat HTTP 429 as `fallback_ratelimit`, distinctly from other errors.
-  Free-tier limits are org-level and cap requests/min, tokens/min and requests/day
-  simultaneously.
+**Both remaining S1s are now closed. Every S1 in the register is closed.**
+
+### What the model actually changed
+
+On the snacks-and-staples cart this file named as the Phase 6 success criterion:
+
+| | Deterministic | Model |
+|---|---|---|
+| Dormant 1 | Dish Wash, rank 1 | **Compostable Garbage Bags, rank 4** — the persona's own lapsed staple |
+| Dormant 2 | Pet Food Variety Stix, rank 1 | Multigrain Biscuit, rank 3 |
+| Never-bought 1 | **Peristaltic Nipple — 'S' Hole**, rank 1 | Baby Wipes, rank 3 |
+| Never-bought 2 | Battery AA, rank 1 | Battery AA, rank 1 |
+
+Three of four rows moved off rank 1, and the implausible suggestion this file
+flagged is gone. **It did not happen with the first prompt** — see D33's gotcha.
+
+### Decisions
+
+**D32 — The model is GPT-OSS 120B, not the spec's Llama 3.3 70B. Owner's decision.**
+
+`GROQ_MODEL` is `openai/gpt-oss-120b`. It is a larger open-weights model and
+better at the two things this prompt actually needs: staying inside a supplied id
+list, and not writing a history claim into a never-bought line. The pinning that
+spec §7.5 asks for is what made this a one-line change, and E7 is now proven
+rather than assumed.
+
+Two consequences the spec did not anticipate, because Llama 3.3 is not a
+reasoning model and this one is:
+
+- **`MODEL_REASONING_EFFORT` is "low".** Reasoning tokens are generated before
+  the first content token, so they are spent entirely inside the 4s abort and
+  buy nothing visible. Measured at "low": ~330 reasoning tokens, 1.3–2.0s round
+  trip. The task is a constrained pick from a supplied list, not a problem that
+  rewards deliberation.
+- **`MODEL_MAX_COMPLETION_TOKENS` is 1024, and it must cover the reasoning.**
+  A 16-token cap during testing returned `finish_reason: "length"` with **empty
+  content** and 14 reasoning tokens. A cap sized for the visible answer alone
+  returns nothing at all.
+
+**D33 — The model sees 6 products per shortlist; the response still carries 12.**
+
+Spec Step 8 says to send the seven shortlists. Sent whole, they cost **4,729
+prompt tokens** — measured, not estimated. The Groq free tier's binding limit is
+**8,000 tokens per minute** (requests are 1,000/day and never bind), so the
+second checkout visit inside a minute returned HTTP 429 and served a fallback
+panel. That was reproduced within minutes of the first working call, and it is
+exactly how the feature would fail in front of an evaluator clicking through two
+carts.
+
+`MODEL_SHORTLIST_DEPTH` (6) plus un-indented JSON takes the prompt to **2,072
+tokens** — three calls a minute instead of one, and 1.5s instead of 2.0s. What
+the model loses is ranks 7–12 of a list already sorted by bestseller rank: the
+tail it was least likely to pick. **Browse & Replace still receives all 12**, so
+the two numbers are not interchangeable.
+
+**D34 is the next free number.**
+
+### Gotchas
+
+- **The first prompt produced the same panel as the deterministic path.** Every
+  pick came back rank 1, including the implausible baby-care one. The lists are
+  handed over in bestseller order and the model took the top of each. What fixed
+  it was saying so explicitly — *"listed in order of overall popularity, NOT in
+  order of how well they suit this cart; the first product in a list is
+  frequently the wrong answer"* — plus a concrete negative example ("a cart of
+  snacks and staples is no reason to suggest infant feeding equipment"). Without
+  that paragraph the model layer is an expensive way to reproduce `products[0]`.
+  If a future prompt edit makes picks collapse back to rank 1, that paragraph is
+  the first thing to check.
+- **The build spec's own example dormant line is unsafe.** §4 Step 8 shows
+  `"You used to order this regularly"` as a valid model response. The product on
+  a dormant row is chosen by bestseller rank and is usually not one the persona
+  bought, so that sentence is false about the item on screen — E2's failure mode
+  on the other slot. Now E10, enforced by requiring the tile label in slot-A
+  lines. Do not "fix" that check by loosening it back to the spec's example.
+- **A rejected reason and a rejected pick are different failures.** A bad id
+  discards the entry and the slot is refilled. A bad *line* discards only the
+  line — the model's judgement about which product suits the cart is the thing
+  it was called for, and is unaffected by it having written a sentence we will
+  not show. `buildRows` also drops a reason whose product was rejected, so a row
+  can never wear a sentence written about a different product.
+- **The `openai` SDK retries twice by default.** Both retries land inside the
+  same 4s abort, so they cannot produce a usable answer, and on a 429 they spend
+  two more requests against the limit that just rejected us. `maxRetries: 0`.
+- **Next 16 refuses to run a second dev server in the same directory** and exits
+  immediately — which looks exactly like the route crashing the server. Three
+  servers "died" on their first request before the log showed
+  `⨯ Another next dev server is already running`. If a server dies on request,
+  read its log before suspecting the code. A production server
+  (`next build && next start -p <port>`) has no such restriction and is also the
+  only way to test with a different `GROQ_API_KEY` without touching `.env.local`.
+- **`x-ratelimit-remaining-tokens` is the header that explains a fallback panel.**
+  A 429 arrives in ~100ms, so a fast fallback is a rate limit and a slow one is a
+  timeout — but the header says so directly.
+
+---
+
+## What is already prepared for Phases 7–9
 
 ### Phase 7 — Browse & Replace
 
@@ -1012,6 +1111,10 @@ layer drops in without restructuring anything.
 - **`events.ts` already exists** (D17) and **seven of the nine** event types are
   already wired and verified live: `search`, `cart_add`, `cart_remove`,
   `panel_impression`, `panel_add`, `panel_dismiss`, `recommend_call`.
+- **`recommend_call.outcome` now carries real values.** Observed live:
+  `model` (latency 1352ms), `fallback_nokey`, `fallback_timeout`,
+  `fallback_ratelimit`. Only `fallback_error` and `fallback_invalid` have not
+  been seen in the wild.
 - **Still to wire:** `panel_replace_open` and `panel_replace_done` (both Phase 7).
 - Phase 8 therefore becomes *verification of the full set* rather than
   construction. Open: G2 (SSR guard — already implemented, needs a test), G3
@@ -1022,10 +1125,11 @@ layer drops in without restructuring anything.
 
 ### Phase 9 — Deploy
 
-- `.gitignore` already covers `.env.local`; **verify with `git log --all -- .env.local`
-  before pushing** (H4).
-- `.env.example` does **not exist yet** — spec §7.2 requires it, committed, containing
-  `GROQ_API_KEY=`.
+- `.gitignore` already covers `.env.local`, and `git log --all -- .env.local`
+  returns nothing — checked in Phase 6. **Re-check before pushing** (H4).
+- `.env.example` **now exists and is committed**, containing `GROQ_API_KEY=`.
+- **`GROQ_API_KEY` must be set in the Vercel project settings**, not just locally.
+  If the deployed panel reports `fallback_nokey`, that is the whole diagnosis.
 - **Do not put these images through `next/image`** (H1, already closed) — they are
   served as plain `<img>` deliberately; Vercel meters optimised source images and
   2,236 of them would exhaust the free tier mid-demo.
@@ -1038,22 +1142,23 @@ layer drops in without restructuring anything.
 
 ---
 
-## Open edge cases (18)
+## Open edge cases (8)
 
 From [`EDGE_CASES.md`](EDGE_CASES.md). Everything else is closed or withdrawn.
 
 | Phase | Open |
 |---|---|
-| 6 | **E1** key leaking to client (S1), **E2** false history claim on never-bought rows (S1), E3 hallucinated ids, E4 same-tile/duplicate picks, E5 markdown-fenced JSON, E6 timeout/429/non-200, E7 model deprecation, E8 reason-line length, E9 prompt injection via product name |
 | 7 | F5 sheet with 0–1 alternatives, F6 replacement already in cart |
 | 8 | G2 SSR guard, G3 event cap breaking attribution, G4 `latencyMs` definition |
 | 9 | H3 works locally, falls back in production, H4 `.env.local` committed |
 | 4, 7 | D7 thin shortlists at a low ceiling |
 | 4, 9 | H2 serverless bundle size |
+| 6, 9 | E11 token-per-minute rate limit — accepted, mitigated, not eliminated |
 
-**E1 and E2 are the two remaining S1s.** E1 is a security failure; E2 is the panel
-telling the user something untrue on the slot type whose entire job is earning
-trust.
+**No S1 is open.** E1 and E2, the two that survived Phase 5, were closed in
+Phase 6. The nearest thing to a live risk is **E11**: not a defect, but the
+reason a demo can show a correct model panel on the first cart and
+`fallback_ratelimit` on the second within the same minute.
 
 ---
 
@@ -1062,6 +1167,14 @@ trust.
 Consolidated because they cost real time across several phases and none is
 obvious.
 
+- **Next 16 will not run two dev servers in the same directory.** The second
+  exits immediately with `⨯ Another next dev server is already running`, which
+  from the outside is indistinguishable from the route crashing the server —
+  every request returns HTTP 000 and `preview_list` comes back empty. If another
+  session already holds one, either use it, or build and run a production server
+  on another port (`npm run build && npx next start -p 3211`), which has no such
+  restriction and additionally lets you vary `GROQ_API_KEY` per launch without
+  editing `.env.local`.
 - **A browser-pane error can contradict a clean build.** A long-lived preview tab
   kept reporting a stale import error after a constant was renamed — surviving
   `preview_stop`, deleting `.next`, and a fresh `preview_start`. The disk, `tsc`
