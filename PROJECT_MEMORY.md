@@ -1,24 +1,114 @@
 # Smart Cart — Project Memory
 
 Single point of resource for handoff. Every phase appends its decisions, outcomes
-and gotchas here. If this project changes hands, this file plus `phases/*/README.md`
-should be enough to continue without the original build conversation.
+and gotchas here. **If this project changes hands, this file plus
+`phases/*/README.md` should be enough to continue without the original build
+conversation.** Read this file top to bottom before touching anything.
+
+---
+
+## START HERE — current state
+
+**Phases 0–5 are complete, tested and committed. Phase 6 is next.**
+
+| Phase | State | Test result |
+|---|---|---|
+| 0 — Data preparation | ✅ committed | 12/12 persona checks |
+| 1 — Scaffold and shell | ✅ committed | 12/12 storage |
+| 2 — Catalogue and search | ✅ committed | 37/37 search |
+| 3 — Cart | ✅ committed | 22/22 cart |
+| 4 — Recommendation engine (deterministic) | ✅ committed | 76/76 recommend |
+| 5 — Panel UI | ✅ committed | 11/11 panel cache |
+| **6 — Model layer** | **next** | needs `GROQ_API_KEY` |
+| 7 — Browse & Replace | not started | |
+| 8 — Events | not started | (partially done — see below) |
+| 9 — Deploy | not started | needs GitHub + Vercel |
+
+**158 checks pass across five suites. `tsc`, `eslint --max-warnings 0` and
+`next build` are all clean. Working tree is clean; 8 commits on `master`, no remote.**
+
+**The app works end to end right now** with no API key: search → add to cart →
+checkout → a four-row Smart Cart panel with real reason lines. The model layer is
+an enhancement on top of a working deterministic path, exactly as the spec
+intends.
+
+### The immediate next action
+
+Phase 6 needs a Groq key in `.env.local` (gitignored, already covered):
+
+```
+GROQ_API_KEY=gsk_...
+```
+
+Then: `npm install openai`, build `src/lib/recommend/prompt.ts` and
+`validate.ts`, and wire them into `src/app/api/recommend/route.ts`. **Much of
+Phase 6 is already scaffolded — see "What is already prepared for Phases 6–9" near
+the end of this file before writing anything.**
+
+---
+
+## What this project is
+
+A deployed web MVP reproducing the Blinkit shopping flow for one hardcoded
+persona, with a new feature — **Smart Cart** — on the checkout page: four product
+recommendations the user did not search for, split **2 dormant + 2 never-bought**,
+each with a one-line reason.
 
 **Governing documents:** [`smart-cart-build-spec.md`](smart-cart-build-spec.md) is
 the literal build instruction — file paths, constant names and phase order come
 from it. [`smart-cart-mvp-idea-doc.md`](smart-cart-mvp-idea-doc.md) is the product
-rationale behind the rules.
+rationale behind the rules. Where they conflict with each other or with reality,
+the resolution is a numbered decision below.
 
-**Companion register:** [`EDGE_CASES.md`](EDGE_CASES.md) lists all 47 identified
-failure modes with severity, mitigation and owning phase. Each phase README states
-which entries it closed.
+**Companion register:** [`EDGE_CASES.md`](EDGE_CASES.md) — 58 identified failure
+modes with severity, mitigation and owning phase. **39 closed, 1 withdrawn, 18
+open.** Each phase README states which it closed.
 
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
-- Decisions are numbered `D<n>` and referenced from phase READMEs.
+- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D31 exist;
+  the next new decision is D32.**
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
+- Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
+  is unit-testable, a `verify_*.ts` suite.
+
+---
+
+## Commands
+
+```bash
+npm run dev            # http://localhost:3000
+npm run build          # must stay clean
+npx tsc --noEmit
+npx eslint src --max-warnings 0
+```
+
+Run every phase suite (all should print `N/N checks passed`):
+
+```bash
+node phases/phase-1-scaffold/verify_storage.ts
+node phases/phase-2-catalogue-search/verify_search.ts
+node phases/phase-3-cart/verify_cart.ts
+node phases/phase-4-recommend/verify_recommend.ts
+node phases/phase-5-panel-ui/verify_panel_cache.ts
+node phases/phase-0-data/verify_history.js
+```
+
+Exercise the recommend route directly:
+
+```bash
+curl -s -X POST http://localhost:3000/api/recommend -H "Content-Type: application/json" -d '{"cart":[{"productId":"p_01163","quantity":1}]}'
+```
+
+**Rebuilding the seed data** — order is load-bearing, see gotcha A1:
+
+```bash
+python scripts/reduce_catalogue.py && rm -rf public/images && python scripts/generate_images.py && python phases/phase-0-data/author_history.py && node phases/phase-0-data/verify_history.js
+```
+
+`?reset=1` on any URL clears all four `sc_*` localStorage keys.
 
 ---
 
@@ -29,12 +119,152 @@ which entries it closed.
 | Node | v24.15.0, npm 11.16.0 |
 | Next.js | 16.2.12 (App Router, Turbopack) |
 | React | 19.2.4 |
-| Tailwind | v4 (via `@tailwindcss/postcss`) |
+| Tailwind | v4 (via `@tailwindcss/postcss`) — CSS-first, **no `tailwind.config.ts`** |
 | TypeScript | 5 |
+| Runtime deps | `next`, `react`, `react-dom`, `fuse.js` — nothing else |
 | Python | **3.9.9** — spec asks for 3.10+ |
 | Python packages | pandas 2.3.3, Pillow 10.2.0, openpyxl 3.1.5 |
-| Git | initialised at repo root, no remote yet |
-| Groq key | not yet obtained — first needed in Phase 6 |
+| Git | `master`, 8 commits, **no remote yet** |
+| Groq key | **not yet obtained** — first needed in Phase 6 |
+
+---
+
+## File map
+
+```
+data/                       committed seed data, read at build time
+  tiles.json                27 tiles. Section order on Home comes from THIS file's order.
+  catalogue.json            2,236 products. Ids are POSITIONAL — see gotcha A1.
+  history.json              the persona: 40 orders, 244 line items
+  search-aliases.json       35 single-word aliases (D15)
+scripts/                    developer tools, never deployed
+  Blinkit_Products.xlsx     source dump, 27,555 rows (a BigBasket export — D1)
+  reduce_catalogue.py       → catalogue.json
+  generate_images.py        → public/images/*.png (--force to regenerate)
+public/images/              2,236 generated 400×400 PNGs, 18.8 MB, committed
+src/lib/
+  config.ts                 EVERY tunable. Nothing numeric may be hardcoded elsewhere.
+  types.ts                  mirrors /data exactly; no seed file is read as `any`
+  storage.ts                localStorage wrapper: SSR-safe, corrupt-safe, throw-safe
+  session.ts                session id + ?reset=1
+  catalogue.ts              loaders, indexed by id and tile (tile lists pre-sorted by rank)
+  search.ts                 alias rewrite → Fuse.js → absolute relevance cutoff
+  cart.ts                   add/remove/setQuantity/subtotal/cartSignature + sanitising
+  useCart.ts                useSyncExternalStore bindings (D21)
+  events.ts                 logEvent, capped, trimmed on write
+  panelCache.ts             sc_panel_cache, capped, stale-id aware
+  recommend/
+    dormancy.ts             tile classification + ownedProductIds + per-section counts
+    shortlist.ts            tile selection, all four exclusions, price ceiling
+    templates.ts            template reason lines
+    fallback.ts             panel assembly, slot allocation, backfill
+src/app/
+  layout.tsx                480px shell, AppBootstrap
+  page.tsx                  HOME
+  search/page.tsx           SEARCH RESULTS
+  cart/page.tsx             CHECKOUT — cart lines → SmartCartPanel → BillDetails
+  api/recommend/route.ts    THE ONLY SERVER-SIDE FILE. Only place GROQ_API_KEY may be read.
+src/components/             AppHeader, SearchBar, CategoryGrid, ProductCard, ProductImage,
+                            QuantityStepper, CartLine, BillDetails, ViewCartBar,
+                            SmartCartPanel, RecommendationRow, AppBootstrap
+```
+
+---
+
+## The seeded persona
+
+One hardcoded user, `u_dabbler_01`, `accountAgeDays: 247`, `segment: "dabbler"`.
+No login, no persona picker. 40 orders / 244 line items spanning 1–212 `daysAgo`.
+
+**`daysAgo` offsets, never absolute dates** — a history seeded in August would
+otherwise be entirely dormant by November and the demo would silently break.
+
+| Class | Count | Tiles |
+|---|---|---|
+| Active | 6 | `vegetables-fruits`, `atta-rice-dal`, `dairy-bread-eggs`, `chips-namkeen`, `drinks-juices`, `instant-food` — all ordered within 2 days |
+| Dormant | 4 | `cleaners-repellents` (38d), `pet-store` (49d), `bakery-biscuits` (67d), `tea-coffee-milk-drinks` (103d) |
+| Never-bought | 17 | everything else |
+
+Orders per **section** — the basis of never-bought tile ordering (D23):
+
+| Section | Orders |
+|---|---|
+| Beauty & Personal Care | **0** |
+| Household Essentials | 5 |
+| Pet Store | 5 |
+| Snacks & Drinks | 42 |
+| Grocery & Kitchen | 97 |
+
+**Two anchor products make the rules observable — do not break these:**
+
+- **`p_02159`** "Padded Harness", `pet-store`, **non-consumable**, rank 6, owned by
+  the persona. Must never appear as a dormant candidate. It sits inside the
+  12-item shortlist so its absence is visible rather than incidental.
+- **`p_02161`** dog food, `pet-store`, **consumable**, bought 3 times. Must
+  continue to appear — re-suggesting a lapsed staple is the intended behaviour,
+  and the contrast with the harness is the whole point of `isConsumable`.
+- `p_01937` compostable garbage bags, bought 4 times then nothing for 38 days, is
+  the lapsed-staple case in `cleaners-repellents`.
+
+---
+
+## Invariants that must never break
+
+Every one of these is enforced by code, not by the model, and each has a test.
+
+1. The panel renders **exactly four rows**, ordered A, A, B, B.
+2. All four rows come from **four different tiles**.
+3. **Slot A = dormant, slot B = never-bought.** If a type cannot supply two, the
+   panel backfills from the other type and the row reports the slot it *actually
+   is*, never the position it occupies (D14).
+4. **No slot-B product exceeds** `max(100, subtotal × 0.5)`. Filtered before the
+   model ever sees a candidate.
+5. **A durable the persona already owns is never a dormant candidate.**
+   Consumables they own are *not* excluded.
+6. **Nothing already in the cart is recommended** — neither the product (D1) nor
+   its tile (D1a).
+7. **Never-bought reason lines claim no purchase history.** See the `CLAIMS_HISTORY`
+   gotcha under Phase 4 — do not implement this by banning the word "you".
+8. **The panel does not recompute while the user is on the page.** Computed once
+   on mount, cached by cart signature.
+9. **`GROQ_API_KEY` is readable only inside `src/app/api/recommend/route.ts`**, and
+   never prefixed `NEXT_PUBLIC_`.
+10. **Every tunable lives in `config.ts`** and is hardcoded nowhere else — including
+    CSS, which receives `PANEL_ROW_EXIT_MS` as an inline custom property rather
+    than duplicating the number.
+
+---
+
+## Constants (`src/lib/config.ts`)
+
+Spec §7.4 verbatim: `DORMANCY_THRESHOLD_DAYS` 30 · `TENURE_MIN_DAYS` 180 ·
+`DORMANT_TILES_OFFERED` 3 · `NEVERBOUGHT_TILES_OFFERED` 4 · `SHORTLIST_SIZE` 12 ·
+`PRICE_CEILING_RATIO` 0.5 · `PRICE_CEILING_FLOOR` 100 · `MODEL_TIMEOUT_MS` 4000 ·
+`GROQ_BASE_URL` · `GROQ_MODEL` `llama-3.3-70b-versatile` · `MODEL_TEMPERATURE` 0.3 ·
+`SEARCH_THRESHOLD` 0.4 · `SEARCH_MAX_RESULTS` 40 · `EVENT_LOG_CAP` 500
+
+Added beyond the spec, in a marked section (D10): `SEARCH_MAX_SCORE` 0.35 (D16) ·
+`MIN_CART_QUANTITY` 1 / `MAX_CART_QUANTITY` 99 (C5) ·
+`MAX_TILES_PER_SECTION_OFFERED` 2 (D23) · `PANEL_CACHE_MAX_ENTRIES` 20 (C7) ·
+`PANEL_ROW_EXIT_MS` 220 (F2)
+
+---
+
+## Testing conventions
+
+- **No test runner, by design.** Node 24 executes TypeScript natively, so suites
+  import and exercise **real source** with no build step and no dependency the
+  spec did not authorise. This is why `src/lib` value imports carry explicit
+  `.ts` extensions (D18) — Node resolves ESM by exact path and ignores tsconfig
+  `paths`.
+- **Faking the browser:** set `globalThis.window = { localStorage: fake }` before
+  calling anything that touches storage. `verify_storage.ts` and `verify_cart.ts`
+  both show the pattern.
+- **A test that cannot fail proves nothing.** `verify_recommend.ts` self-tests its
+  own `CLAIMS_HISTORY` detector against 9 must-reject and 4 must-accept lines,
+  because the first version passed everything.
+- Suites are additive: a later phase never edits an earlier suite except to
+  correct a stale expectation, which is then noted in that phase's README.
 
 ---
 
@@ -93,7 +323,11 @@ had `drinks-juices` leading with TGL Co., Te-A-Me and Karma Kettle. After the re
 `tea-coffee-milk-drinks` leads with TGL Co. and VAHDAM. Both tiles now read as
 their label.
 
-**D5 — `Oral Care` files under `health-pharma`, which makes the spec's `colgat` test unsatisfiable. NEEDS A CALL BEFORE PHASE 2.**
+**D5 — `Oral Care` files under `health-pharma`, which makes the spec's `colgat` test unsatisfiable.**
+> ⚠️ **SUPERSEDED BY D12.** Every product is searchable now, so `colgat` returns
+> real results and this conflict no longer exists. `Oral Care` remains filed under
+> `health-pharma`. Kept for the reasoning only — **do not act on it.**
+
 Colgate exists only in `Oral Care` (271 source rows). Every tile in the Beauty &
 Personal Care section is `searchable: false` per the spec's own tile table, and the
 spec provides no oral-care tile. So `Oral Care` cannot land anywhere searchable
@@ -119,6 +353,9 @@ ids, and ids shift whenever the catalogue is rebuilt — so the design is encode
 directory as containing exactly two files.
 
 **D7 — Never-bought tile ranking is degenerate. A Phase 4 problem, flagged now.**
+> ✅ **RESOLVED BY D23** — ordered by the persona's per-section order count.
+> Kept for the reasoning only.
+
 Spec Step 6 selects never-bought tiles by "`bestsellerRank` of their top product
 ascending". Every tile's top product has rank 1, so all 17 never-bought tiles tie
 and the selection collapses to whatever order the array happens to be in — which
@@ -175,11 +412,16 @@ The build spec's §5 file tree lists a `tailwind.config.ts` that this version do
 not produce. Cosmetic divergence, no behavioural effect. Next 16 likewise satisfies
 the spec's "Next.js 14+".
 
-**D10 — `config.ts` is byte-for-byte the spec's §7.4, and stays that way for now.**
-Several edge-case mitigations want new tunables — a minimum query length (B5), a
-panel-cache cap (C7), a quantity clamp (C5). None belong to Phase 1, so none were
-added. When they arrive they go **into `config.ts`** under a clearly marked section,
-never inline, because the file's stated contract is that it holds every tunable.
+**D10 — New tunables go into `config.ts` under a marked section, never inline.**
+At Phase 1 the file was byte-for-byte the spec's §7.4. Several edge-case
+mitigations later needed constants the spec did not anticipate; each was added
+below a `Beyond build spec §7.4` marker rather than hardcoded at its call site,
+because the file's stated contract is that it holds **every** tunable. Six have
+since been added — see the Constants section near the top of this file.
+
+This contract extends to CSS, which cannot import TypeScript: `PANEL_ROW_EXIT_MS`
+is passed into `globals.css` as an inline custom property by `SmartCartPanel`
+rather than duplicated as a literal in the stylesheet.
 
 **D11 — Storage guards are shallow and heal lazily.**
 `isCartLines` and friends check enough structure to prevent a crash, not enough to
@@ -717,5 +959,132 @@ Folding it into `fallback_error` would bury it behind genuine failures.
 - **The panel is deliberately absent on an empty cart.** The idea doc's "no
   minimum cart size" removed a two-item floor; it does not mean the panel should
   render over an empty basket.
+
+---
+
+## What is already prepared for Phases 6–9
+
+Read this before writing Phase 6. Several hooks exist specifically so the model
+layer drops in without restructuring anything.
+
+### Phase 6 — Model layer
+
+- **`buildRows()` in `fallback.ts` already accepts an optional `chooseProduct`
+  callback** (D24). The model path passes a function returning `{ productId,
+  reason }` per shortlist. A returned id that is **not in that shortlist is
+  ignored** and the top-ranked product is used instead — so a hallucinated id
+  degrades to the deterministic answer at assembly time, before validation.
+- **`RecommendResponse.outcome` already exists and the route already sets it**
+  (D31). Today it returns `"fallback_nokey"`. Phase 6 replaces that with the real
+  per-attempt outcome. The client already logs whatever it receives.
+- **`RecommendOutcome` already has all six values**, including the added
+  `fallback_nokey`.
+- **The client already logs `recommend_call` with a real `latencyMs`** measured as
+  the client-side round trip.
+- **`CLAIMS_HISTORY` in `verify_recommend.ts` is the validator shape to reuse for
+  E2** — it is already self-tested. Do not re-derive it, and do not simplify it to
+  banning "you".
+- Success criterion beyond the spec's own test: at a ₹100 ceiling the
+  deterministic path currently surfaces *"Peristaltic Nipple — 'S' Hole"* from
+  `baby-care`. Every rule holds, but it is not a *plausible* suggestion. The model
+  choosing better **from the same shortlist** is what Phase 6 is for.
+- Spec §7.5: treat HTTP 429 as `fallback_ratelimit`, distinctly from other errors.
+  Free-tier limits are org-level and cap requests/min, tokens/min and requests/day
+  simultaneously.
+
+### Phase 7 — Browse & Replace
+
+- **The response already carries `shortlists`** — the full ranked list for each of
+  the four chosen tiles — so the sheet opens from memory with **no second network
+  call**. This is already populated and already cached.
+- **`panelCache.ts` already validates shortlist ids**, so a sheet can never render
+  an entry whose product the catalogue has since lost.
+- Edge cases F5 (sheet with 0–1 alternatives) and F6 (replacement already in cart)
+  are open and belong here. D7 explains why F5 is realistic: at a ₹100 ceiling
+  `bath-body` has only 4 products under the cap.
+- Spec 7.2: a replacement **keeps the original row's slot and position**.
+- `RecommendationRow` will grow a Browse & Replace link. **The row height is a
+  single exported constant** (`PANEL_ROW_HEIGHT_CLASS`) shared with the skeleton,
+  so update it there and both stay in sync — otherwise F1 regresses.
+
+### Phase 8 — Events
+
+- **`events.ts` already exists** (D17) and **seven of the nine** event types are
+  already wired and verified live: `search`, `cart_add`, `cart_remove`,
+  `panel_impression`, `panel_add`, `panel_dismiss`, `recommend_call`.
+- **Still to wire:** `panel_replace_open` and `panel_replace_done` (both Phase 7).
+- Phase 8 therefore becomes *verification of the full set* rather than
+  construction. Open: G2 (SSR guard — already implemented, needs a test), G3
+  (cap dropping an impression a later add refers to), G4 (define `latencyMs` as
+  client-side round trip — already true, needs documenting).
+- **`cart_add`/`cart_remove` fire only on the 0↔1 transition** (D22). Do not
+  "fix" this into per-tap logging.
+
+### Phase 9 — Deploy
+
+- `.gitignore` already covers `.env.local`; **verify with `git log --all -- .env.local`
+  before pushing** (H4).
+- `.env.example` does **not exist yet** — spec §7.2 requires it, committed, containing
+  `GROQ_API_KEY=`.
+- **Do not put these images through `next/image`** (H1, already closed) — they are
+  served as plain `<img>` deliberately; Vercel meters optimised source images and
+  2,236 of them would exhaust the free tier mid-demo.
+- `catalogue.json` is 0.62 MB and is the only large static import in the route
+  (H2). Do not add more.
+- The Phase 9 test that matters: on the deployed URL, `recommend_call.outcome`
+  must read `model`, not a fallback. If it reads fallback in production but model
+  locally, the key or the region is the problem (H3) — and `fallback_nokey` exists
+  precisely to tell those apart.
+
+---
+
+## Open edge cases (18)
+
+From [`EDGE_CASES.md`](EDGE_CASES.md). Everything else is closed or withdrawn.
+
+| Phase | Open |
+|---|---|
+| 6 | **E1** key leaking to client (S1), **E2** false history claim on never-bought rows (S1), E3 hallucinated ids, E4 same-tile/duplicate picks, E5 markdown-fenced JSON, E6 timeout/429/non-200, E7 model deprecation, E8 reason-line length, E9 prompt injection via product name |
+| 7 | F5 sheet with 0–1 alternatives, F6 replacement already in cart |
+| 8 | G2 SSR guard, G3 event cap breaking attribution, G4 `latencyMs` definition |
+| 9 | H3 works locally, falls back in production, H4 `.env.local` committed |
+| 4, 7 | D7 thin shortlists at a low ceiling |
+| 4, 9 | H2 serverless bundle size |
+
+**E1 and E2 are the two remaining S1s.** E1 is a security failure; E2 is the panel
+telling the user something untrue on the slot type whose entire job is earning
+trust.
+
+---
+
+## Tooling notes (browser pane, dev server)
+
+Consolidated because they cost real time across several phases and none is
+obvious.
+
+- **A browser-pane error can contradict a clean build.** A long-lived preview tab
+  kept reporting a stale import error after a constant was renamed — surviving
+  `preview_stop`, deleting `.next`, and a fresh `preview_start`. The disk, `tsc`
+  and `next build` were all clean; the stale module graph lived in *the tab*. A
+  new tab (`tabs_create`) loaded correctly first time. **If the error contradicts
+  the build, open a fresh tab before debugging.**
+- **Screenshots were unavailable in every session so far** — the pane is not
+  displayed, so nothing composites and `computer{action:"screenshot"}` times out.
+  Layout was verified by measuring `getBoundingClientRect` instead, which caught a
+  2px shift no screenshot would have shown. **The UI has never been reviewed by
+  eye. Do a visual pass before deploy.**
+- **`requestAnimationFrame` never fires while the pane is hidden**, so rAF-based
+  measurement hangs until the tool times out. Use `setTimeout`.
+- **Prefer `element.click()` via `javascript_tool` over coordinate clicks.**
+  Coordinate clicks on `ref_N` intermittently missed after a viewport resize, with
+  no error — the handler was fine.
+- **`read_page`'s `interactive` filter can report "(empty page)"** on a
+  results-heavy page that is actually rendering. Cross-check with `get_page_text`
+  or `filter: "all"`.
+- **React state updates are not visible in the same synchronous read** as the
+  `.click()` that caused them. Re-read in a separate call.
+- **To observe the panel skeleton**, patch `window.fetch` to hold
+  `/api/recommend` open, clear `sc_panel_cache`, then navigate away and back
+  *client-side* so the patch survives — a full reload discards it.
 
 ---

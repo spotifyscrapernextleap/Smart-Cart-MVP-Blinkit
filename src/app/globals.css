@@ -87,10 +87,16 @@ body {
   display: grid;
   grid-template-rows: 1fr;
   opacity: 1;
+  /*
+   * Duration comes from PANEL_ROW_EXIT_MS, set as an inline custom property by
+   * SmartCartPanel. config.ts is contractually the only home for tunables
+   * (D10), and CSS cannot import it — so the value is passed in rather than
+   * duplicated here. The fallback only applies if the panel fails to set it.
+   */
   transition:
-    grid-template-rows 220ms ease,
-    opacity 160ms ease,
-    border-top-width 220ms ease;
+    grid-template-rows var(--panel-row-exit, 220ms) ease,
+    opacity calc(var(--panel-row-exit, 220ms) * 0.73) ease,
+    border-top-width var(--panel-row-exit, 220ms) ease;
 }
 .panel-row > * {
   overflow: hidden;

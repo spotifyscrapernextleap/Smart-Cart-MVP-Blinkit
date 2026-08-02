@@ -281,10 +281,15 @@ export default function SmartCartPanel() {
     <section
       aria-label="Smart Cart suggestions"
       className="mx-3 my-2 rounded-xl border border-dashed"
-      style={{
-        backgroundColor: "var(--color-panel-tint)",
-        borderColor: "color-mix(in srgb, var(--color-panel-accent) 35%, transparent)",
-      }}
+      style={
+        {
+          backgroundColor: "var(--color-panel-tint)",
+          borderColor: "color-mix(in srgb, var(--color-panel-accent) 35%, transparent)",
+          // Feeds the row-collapse transition in globals.css, so the duration
+          // has a single home in config.ts rather than a copy in the stylesheet.
+          "--panel-row-exit": `${PANEL_ROW_EXIT_MS}ms`,
+        } as React.CSSProperties
+      }
     >
       <PanelHeader dismissed={dismissed} onToggle={handleDismiss} />
 

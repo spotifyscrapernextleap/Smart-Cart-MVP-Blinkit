@@ -43,6 +43,9 @@ export const SEARCH_THRESHOLD = 0.4;
 
 export const SEARCH_MAX_RESULTS = 40;
 
+/** Events kept in localStorage before the oldest are dropped. */
+export const EVENT_LOG_CAP = 500;
+
 // ---------------------------------------------------------------------------
 // Beyond build spec §7.4.
 //
@@ -66,9 +69,6 @@ export const SEARCH_MAX_RESULTS = 40;
  * `beer` 0.18, and both are in the catalogue.
  */
 export const SEARCH_MAX_SCORE = 0.35;
-
-/** Events kept in localStorage before the oldest are dropped. */
-export const EVENT_LOG_CAP = 500;
 
 /**
  * Cart line quantity bounds. Below 1 the line is dropped rather than shown at
