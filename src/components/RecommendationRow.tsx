@@ -31,24 +31,33 @@ import QuantityStepper from "./QuantityStepper";
  * Fixed row height, shared with the panel's skeleton so the two are identical by
  * construction rather than by coincidence. The Bill details block must not shift
  * when the panel resolves. (EDGE_CASES F1)
+ *
+ * Grew from 76px in Phase 7 to fit the Browse & Replace control. Because the
+ * skeleton reads the same constant, that was a one-line change and the two
+ * cannot drift — which is the reason it was exported in the first place.
  */
-export const PANEL_ROW_HEIGHT_CLASS = "h-[76px]";
+export const PANEL_ROW_HEIGHT_CLASS = "h-[92px]";
 
 export default function RecommendationRow({
   row,
   quantity,
   exiting,
+  canBrowse,
   onAdd,
   onIncrement,
   onDecrement,
+  onBrowse,
 }: {
   row: PanelRow;
   quantity: number;
   /** Collapsing out after being added. (EDGE_CASES F2) */
   exiting: boolean;
+  /** False when the shortlist has nothing left to offer. (EDGE_CASES F5) */
+  canBrowse: boolean;
   onAdd: () => void;
   onIncrement: () => void;
   onDecrement: () => void;
+  onBrowse: () => void;
 }) {
   const product = getProduct(row.productId);
   if (!product) return null;
@@ -63,6 +72,17 @@ export default function RecommendationRow({
           <ProductImage src={product.imagePath} alt={product.name} className="h-full w-full" />
         </div>
 
+        {/*
+          Three lines: what it is, why it is here, what else there is. The
+          prototype put Browse & Replace directly under the name; the reason
+          line — which the prototype did not have, and which the idea doc calls
+          P0 — now occupies that slot, so the control moves down one line rather
+          than competing with it for the same row.
+
+          It is not in the right-hand column: that column is ~70px wide, so the
+          label would have to shrink to "Replace", and stacking a third control
+          4px from ADD is a mis-tap waiting to happen.
+        */}
         <div className="flex min-w-0 flex-1 flex-col justify-center">
           <h3 className="clamp-1 text-[13px] leading-tight font-semibold text-[var(--color-ink)]">
             {product.name}
@@ -70,6 +90,33 @@ export default function RecommendationRow({
           <p className="clamp-1 mt-0.5 text-[11px] leading-tight text-[var(--color-ink-muted)]">
             {row.reason}
           </p>
+
+          {canBrowse ? (
+            <button
+              type="button"
+              onClick={onBrowse}
+              disabled={exiting}
+              aria-label={`Browse alternatives to ${product.name}`}
+              // Padded well past the 11px text so the tap target is ~26px
+              // tall, and pulled back on the left so the label still lines up
+              // with the name above it. Small text must not mean a small
+              // target.
+              className="mt-0.5 -ml-1 flex w-fit items-center gap-0.5 py-1.5 pr-2 pl-1 text-[11px] leading-tight font-semibold disabled:opacity-50"
+              style={{ color: "var(--color-panel-accent)" }}
+            >
+              Browse &amp; replace
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden>
+                <path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          ) : (
+            // The shortlist has nothing left to offer. Rendering the label
+            // inert states that plainly; opening an empty sheet would not.
+            // (EDGE_CASES F5)
+            <span className="mt-0.5 block text-[11px] leading-tight text-[var(--color-ink-faint)]">
+              No alternatives left
+            </span>
+          )}
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-1">

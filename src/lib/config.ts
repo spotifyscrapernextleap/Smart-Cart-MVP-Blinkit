@@ -116,6 +116,15 @@ export const PANEL_CACHE_MAX_ENTRIES = 20;
 export const PANEL_ROW_EXIT_MS = 220;
 
 /**
+ * How long the Browse & Replace sheet takes to rise into view.
+ *
+ * Passed into `globals.css` as an inline custom property by the sheet itself,
+ * for the same reason as `PANEL_ROW_EXIT_MS`: config.ts is contractually the
+ * only home for a tunable, and CSS cannot import TypeScript. (D10)
+ */
+export const SHEET_ENTER_MS = 200;
+
+/**
  * Reasoning budget for GPT-OSS. Not a parameter the spec anticipated, because
  * `llama-3.3-70b-versatile` is not a reasoning model and GPT-OSS is (D32).
  *

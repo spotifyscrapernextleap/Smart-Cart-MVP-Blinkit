@@ -13,9 +13,11 @@ import {
 import { PANEL_ROW_EXIT_MS } from "@/lib/config";
 import { logEvent } from "@/lib/events";
 import { getCachedPanel, setCachedPanel } from "@/lib/panelCache";
+import { alternativesFor, applyReplacement } from "@/lib/recommend/replace";
 import { useCart } from "@/lib/useCart";
-import type { CartSignature, ProductId, RecommendResponse } from "@/lib/types";
+import type { CartSignature, PanelRow, ProductId, RecommendResponse } from "@/lib/types";
 
+import BrowseReplaceSheet from "./BrowseReplaceSheet";
 import RecommendationRow, { PANEL_ROW_HEIGHT_CLASS } from "./RecommendationRow";
 
 /**
@@ -115,6 +117,10 @@ function SkeletonRows() {
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <div className="panel-shimmer h-3 w-3/4 rounded" />
               <div className="panel-shimmer h-2.5 w-1/2 rounded" />
+              {/* Third bar for the Browse & Replace line, so the skeleton is
+                  the same shape as the row it stands in for, not just the same
+                  height. */}
+              <div className="panel-shimmer h-2.5 w-1/3 rounded" />
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <div className="panel-shimmer h-6 w-14 rounded-lg" />
@@ -132,6 +138,20 @@ export default function SmartCartPanel() {
   const [state, setState] = useState<PanelState>({ status: "loading" });
   const [dismissed, setDismissed] = useState(false);
   const [exiting, setExiting] = useState<Set<ProductId>>(new Set());
+
+  /**
+   * Replacements, keyed by the row position they apply to.
+   *
+   * An overlay rather than a mutation of the response, for the same reason the
+   * added rows are filtered rather than removed (F3): the response stays the
+   * canonical four rows, so a replaced row that is added and then removed from
+   * the cart comes back — as the replacement, in its original position, with
+   * its original slot.
+   */
+  const [replacements, setReplacements] = useState<Record<number, PanelRow>>({});
+
+  /** The row whose sheet is open, by position. Null when no sheet is open. */
+  const [browsing, setBrowsing] = useState<number | null>(null);
 
   /**
    * The signature captured at mount, held for the life of the visit so that
@@ -245,7 +265,14 @@ export default function SmartCartPanel() {
   if (state.status === "empty") return null;
 
   const cartQuantities = new Map(lines.map((line) => [line.productId, line.quantity]));
-  const rows = state.status === "ready" ? state.response.rows : [];
+  const shortlists = state.status === "ready" ? state.response.shortlists : {};
+
+  // The response's rows, with any replacement standing in for the row it
+  // replaced. Everything downstream — ADD, the exit animation, the events —
+  // reads this, so a replacement behaves exactly like an original row.
+  const rows = (state.status === "ready" ? state.response.rows : []).map(
+    (row) => replacements[row.position] ?? row
+  );
 
   // A row is visible until its product is in the cart — and stays mounted for
   // the length of its exit animation so the collapse is legible.
@@ -277,6 +304,37 @@ export default function SmartCartPanel() {
     logEvent("cart_add", { productId, tile: product.tile, source: "panel" });
   };
 
+  const browsingRow = browsing === null ? null : rows.find((r) => r.position === browsing);
+
+  const handleBrowseOpen = (row: PanelRow) => {
+    setBrowsing(row.position);
+    logEvent("panel_replace_open", {
+      productId: row.productId,
+      slot: row.slot,
+      tile: row.tile,
+    });
+  };
+
+  const handleReplace = (row: PanelRow, replacementProductId: ProductId) => {
+    setReplacements((prev) => ({
+      ...prev,
+      [row.position]: applyReplacement(row, replacementProductId),
+    }));
+    setBrowsing(null);
+
+    // `originalProductId` is the product that was on the row a moment ago, not
+    // the one the panel first computed. A second replacement describes the swap
+    // it actually performed; naming the panel's first product there would claim
+    // a swap that never happened, and the full chain is still recoverable from
+    // the event sequence. (D35)
+    logEvent("panel_replace_done", {
+      originalProductId: row.productId,
+      replacementProductId,
+      slot: row.slot,
+      tile: row.tile,
+    });
+  };
+
   return (
     <section
       aria-label="Smart Cart suggestions"
@@ -299,10 +357,17 @@ export default function SmartCartPanel() {
         <ul>
           {visibleRows.map((row) => (
             <RecommendationRow
-              key={row.productId}
+              // Keyed by position, not productId: a replacement is the same row
+              // with a different product, so keying by product would unmount
+              // and remount it and throw away its place in the list.
+              key={row.position}
               row={row}
               quantity={cartQuantities.get(row.productId) ?? 0}
               exiting={exiting.has(row.productId)}
+              canBrowse={
+                alternativesFor(shortlists[row.tile], row.productId, cartQuantities.keys())
+                  .length > 0
+              }
               onAdd={() => handleAdd(row.productId)}
               onIncrement={() => addToCart(row.productId, 1)}
               onDecrement={() => {
@@ -310,10 +375,24 @@ export default function SmartCartPanel() {
                 if (current <= 1) removeFromCart(row.productId);
                 else setQuantity(row.productId, current - 1);
               }}
+              onBrowse={() => handleBrowseOpen(row)}
             />
           ))}
         </ul>
       )}
+
+      {browsingRow ? (
+        <BrowseReplaceSheet
+          row={browsingRow}
+          alternatives={alternativesFor(
+            shortlists[browsingRow.tile],
+            browsingRow.productId,
+            cartQuantities.keys()
+          )}
+          onSelect={(productId) => handleReplace(browsingRow, productId)}
+          onClose={() => setBrowsing(null)}
+        />
+      ) : null}
     </section>
   );
 }

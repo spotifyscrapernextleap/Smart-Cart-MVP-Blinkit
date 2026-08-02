@@ -126,11 +126,37 @@ body {
     background-position: 0 50%;
   }
 }
+/*
+ * Browse & Replace sheet.
+ *
+ * Rises rather than appears, so it reads as a layer arriving over the page
+ * instead of the page having been replaced. Duration comes from SHEET_ENTER_MS
+ * via an inline custom property, same arrangement as the row collapse above.
+ */
+.sheet-backdrop {
+  animation: sheet-fade var(--sheet-enter, 200ms) ease;
+}
+.sheet-panel {
+  animation: sheet-rise var(--sheet-enter, 200ms) cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panel-row {
     transition: none;
   }
-  .panel-shimmer {
+  .panel-shimmer,
+  .sheet-backdrop,
+  .sheet-panel {
     animation: none;
   }
 }

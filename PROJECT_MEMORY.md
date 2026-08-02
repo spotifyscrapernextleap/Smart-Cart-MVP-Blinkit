@@ -9,7 +9,7 @@ conversation.** Read this file top to bottom before touching anything.
 
 ## START HERE — current state
 
-**Phases 0–6 are complete, tested and committed. Phase 7 is next.**
+**Phases 0–7 are complete, tested and committed. Phase 8 is next.**
 
 | Phase | State | Test result |
 |---|---|---|
@@ -20,29 +20,29 @@ conversation.** Read this file top to bottom before touching anything.
 | 4 — Recommendation engine (deterministic) | ✅ committed | 76/76 recommend |
 | 5 — Panel UI | ✅ committed | 11/11 panel cache |
 | 6 — Model layer | ✅ committed | 80/80 model |
-| **7 — Browse & Replace** | **next** | |
-| 8 — Events | not started | (mostly done — see below) |
+| 7 — Browse & Replace | ✅ committed | 71/71 replace |
+| **8 — Events** | **next** | (mostly done — see below) |
 | 9 — Deploy | not started | needs GitHub + Vercel |
 
-**238 checks pass across six suites. `tsc`, `eslint --max-warnings 0` and
+**309 checks pass across seven suites. `tsc`, `eslint --max-warnings 0` and
 `next build` are all clean.**
 
-**The app works end to end right now, with the model live**: search → add to
-cart → checkout → a four-row Smart Cart panel whose products and reason lines
-are chosen by GPT-OSS 120B, degrading to the deterministic panel on any failure.
-Measured round trip 1.3–2.0s against a 4s abort.
+**The whole feature is now built.** Search → add to cart → checkout → a four-row
+Smart Cart panel whose products and reason lines are chosen by GPT-OSS 120B,
+each row swappable from its own shortlist with no second network call,
+degrading to the deterministic panel on any model failure. Measured round trip
+1.3–2.0s against a 4s abort.
 
 ### The immediate next action
 
-Phase 7 — Browse & Replace. The response already carries the full 12-deep
-`shortlists` for the four chosen tiles, so the sheet opens from memory with **no
-second network call**. See "What is already prepared for Phases 7–9" near the end
-of this file before writing anything.
+Phase 8 — Events. This is **verification, not construction**: all nine event
+types are wired and have been observed live. What Phase 8 owes is a suite that
+asserts the full set, plus G2, G3 and G4. See "What is already prepared for
+Phases 8–9" near the end of this file.
 
-**Watch out for one thing first:** `MODEL_SHORTLIST_DEPTH` (6) now means the
-model sees only the head of each shortlist while the response still carries all
-12. Browse & Replace reads the full 12 — that is deliberate, and the two numbers
-are not interchangeable.
+**Then Phase 9 is the only thing between this and a deployed demo**, and its
+one test that matters is `recommend_call.outcome` reading `model` on the
+deployed URL.
 
 ---
 
@@ -60,14 +60,14 @@ rationale behind the rules. Where they conflict with each other or with reality,
 the resolution is a numbered decision below.
 
 **Companion register:** [`EDGE_CASES.md`](EDGE_CASES.md) — 60 identified failure
-modes with severity, mitigation and owning phase. **51 closed, 1 withdrawn, 8
+modes with severity, mitigation and owning phase. **53 closed, 1 withdrawn, 6
 open, and every S1 is closed.** Each phase README states which it closed.
 
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
-- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D33 exist;
-  the next new decision is D34.**
+- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D35 exist;
+  the next new decision is D36.**
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
 - Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
@@ -93,6 +93,7 @@ node phases/phase-3-cart/verify_cart.ts
 node phases/phase-4-recommend/verify_recommend.ts
 node phases/phase-5-panel-ui/verify_panel_cache.ts
 node phases/phase-6-model/verify_model.ts
+node phases/phase-7-browse-replace/verify_replace.ts
 node phases/phase-0-data/verify_history.js
 ```
 
@@ -165,6 +166,7 @@ src/lib/
     fallback.ts             panel assembly, slot allocation, backfill
     prompt.ts               system prompt + the JSON payload sent to the model
     validate.ts             JSON extraction, per-entry validation, per-tile resolution
+    replace.ts              what the sheet offers, and what a swap preserves
 src/app/
   layout.tsx                480px shell, AppBootstrap
   page.tsx                  HOME
@@ -174,7 +176,8 @@ src/app/
                             Model call, 4s abort, every fallback route.
 src/components/             AppHeader, SearchBar, CategoryGrid, ProductCard, ProductImage,
                             QuantityStepper, CartLine, BillDetails, ViewCartBar,
-                            SmartCartPanel, RecommendationRow, AppBootstrap
+                            SmartCartPanel, RecommendationRow, BrowseReplaceSheet,
+                            AppBootstrap
 ```
 
 ---
@@ -264,7 +267,8 @@ Added beyond the spec, in a marked section (D10): `SEARCH_MAX_SCORE` 0.35 (D16) 
 `MAX_TILES_PER_SECTION_OFFERED` 2 (D23) · `PANEL_CACHE_MAX_ENTRIES` 20 (C7) ·
 `PANEL_ROW_EXIT_MS` 220 (F2) · `MODEL_REASONING_EFFORT` "low" (D32) ·
 `MODEL_MAX_COMPLETION_TOKENS` 1024 (D32) · `MODEL_SHORTLIST_DEPTH` 6 (D33) ·
-`REASON_MAX_CHARS` 100 / `REASON_MAX_WORDS` 8 (spec prose, made constants)
+`REASON_MAX_CHARS` 100 / `REASON_MAX_WORDS` 8 (spec prose, made constants) ·
+`SHEET_ENTER_MS` 200 (D10)
 
 ---
 
@@ -1089,35 +1093,85 @@ the two numbers are not interchangeable.
 
 ---
 
-## What is already prepared for Phases 7–9
+## Phase 7 — Browse & Replace
 
-### Phase 7 — Browse & Replace
+**Completed.** Spec test passes live on all four clauses; verification suite
+passes 71/71. Detail in
+[`phases/phase-7-browse-replace/README.md`](phases/phase-7-browse-replace/README.md).
 
-- **The response already carries `shortlists`** — the full ranked list for each of
-  the four chosen tiles — so the sheet opens from memory with **no second network
-  call**. This is already populated and already cached.
-- **`panelCache.ts` already validates shortlist ids**, so a sheet can never render
-  an entry whose product the catalogue has since lost.
-- Edge cases F5 (sheet with 0–1 alternatives) and F6 (replacement already in cart)
-  are open and belong here. D7 explains why F5 is realistic: at a ₹100 ceiling
-  `bath-body` has only 4 products under the cap.
-- Spec 7.2: a replacement **keeps the original row's slot and position**.
-- `RecommendationRow` will grow a Browse & Replace link. **The row height is a
-  single exported constant** (`PANEL_ROW_HEIGHT_CLASS`) shared with the skeleton,
-  so update it there and both stay in sync — otherwise F1 regresses.
+Closed edge cases **F5** (empty sheet) and **F6** (replacement already in cart).
+
+### Decisions
+
+**D34 — Browse & Replace is the third line of the middle column, under the reason line.**
+
+The owner's prototype put "Browse and Replace" directly under the product name.
+The prototype had **no reason line**, and the idea doc calls the reason line P0
+and "not decorative" (D27) — so both wanted the same slot. The reason line takes
+it, because it is the element that does the feature's actual work, and the
+control moves down one line. Approved by the owner against a mockup.
+
+Three alternatives were considered and rejected:
+
+| Placement | Why not |
+|---|---|
+| Right column, under the price | The column is ~70px wide, so the label shrinks to "Replace", and a third control sitting 4px from ADD is a mis-tap generator. |
+| Right-aligned on the reason line | Reason lines already truncate at 480px — the observed panel shows *"…5 weeks…"*. Giving that line a competitor makes every dormant reason unreadable. |
+| Whole row tappable | Undiscoverable, and an accidental row-tap while reaching for ADD is the same interaction cliff the idea doc's stepper critique warns about. |
+
+The cost is 16px per row — `PANEL_ROW_HEIGHT_CLASS` went from `h-[76px]` to
+`h-[92px]`. Because the skeleton reads that same constant, F1 did not regress:
+measured **421.33px in both states, 0px shift**. That constant existing is the
+only reason this was a one-line change.
+
+**D35 — `panel_replace_done.originalProductId` is the product that was on the row, not the panel's first.**
+
+On a second replacement of the same row, the event names the product being
+swapped *out*, not the one the panel originally computed. A replace event
+describes one swap; naming the panel's first product would claim a swap that
+never happened, and the full chain is still recoverable from the event sequence
+in order. `panel_replace_open` records the displayed product for the same reason.
+
+### Gotchas
+
+- **A reason line does not automatically survive a swap.** Slot A keeps its
+  line, because that line is structurally a claim about the *tile* — the
+  template builds it from the tile label, and a model line is rejected unless it
+  contains it (E10) — and the tile does not change. Slot B does not keep its
+  line, because nothing guarantees a never-bought line is not about the specific
+  product: *"handy for weekend baking"* is fine above a cake mix and false above
+  batteries. This is the same rule `buildRows` applies when it discards a reason
+  whose product was rejected — **a line never outlives the product it was
+  written about.**
+- **Panel rows are keyed by `position`, not `productId`.** A replacement is the
+  same row holding a different product; keying by product unmounts and remounts
+  the row, throwing away its place in the list.
+- **F6 is not redundant with the shortlist's cart exclusion.** The panel is
+  computed once at mount and cached, so by the time the sheet opens the cart can
+  hold products the shortlist was built without. The sheet re-applies the
+  exclusion against the *live* cart.
+- **The sheet is where a rule leaks.** It is a second surface onto the same
+  candidates, so the suite checks every alternative on every row of four carts
+  against D1, D1a, D3, D4 and D5 — 32 checks — and then replaces all four rows
+  at once, which is the worst case for tile diversity. Any future change to the
+  sheet should keep that group green.
+
+---
+
+## What is already prepared for Phases 8–9
 
 ### Phase 8 — Events
 
-- **`events.ts` already exists** (D17) and **seven of the nine** event types are
-  already wired and verified live: `search`, `cart_add`, `cart_remove`,
-  `panel_impression`, `panel_add`, `panel_dismiss`, `recommend_call`.
+- **`events.ts` already exists** (D17) and **all nine** event types are now wired
+  and have been observed live: `search`, `cart_add`, `cart_remove`,
+  `panel_impression`, `panel_add`, `panel_dismiss`, `recommend_call`,
+  `panel_replace_open`, `panel_replace_done`. **Phase 8 constructs nothing** —
+  it asserts the full set and closes G2, G3, G4.
 - **`recommend_call.outcome` now carries real values.** Observed live:
   `model` (latency 1352ms), `fallback_nokey`, `fallback_timeout`,
   `fallback_ratelimit`. Only `fallback_error` and `fallback_invalid` have not
   been seen in the wild.
-- **Still to wire:** `panel_replace_open` and `panel_replace_done` (both Phase 7).
-- Phase 8 therefore becomes *verification of the full set* rather than
-  construction. Open: G2 (SSR guard — already implemented, needs a test), G3
+- Open: G2 (SSR guard — already implemented, needs a test), G3
   (cap dropping an impression a later add refers to), G4 (define `latencyMs` as
   client-side round trip — already true, needs documenting).
 - **`cart_add`/`cart_remove` fire only on the 0↔1 transition** (D22). Do not
@@ -1142,21 +1196,21 @@ the two numbers are not interchangeable.
 
 ---
 
-## Open edge cases (8)
+## Open edge cases (6)
 
 From [`EDGE_CASES.md`](EDGE_CASES.md). Everything else is closed or withdrawn.
 
 | Phase | Open |
 |---|---|
-| 7 | F5 sheet with 0–1 alternatives, F6 replacement already in cart |
 | 8 | G2 SSR guard, G3 event cap breaking attribution, G4 `latencyMs` definition |
 | 9 | H3 works locally, falls back in production, H4 `.env.local` committed |
 | 4, 7 | D7 thin shortlists at a low ceiling |
 | 4, 9 | H2 serverless bundle size |
 | 6, 9 | E11 token-per-minute rate limit — accepted, mitigated, not eliminated |
 
-**No S1 is open.** E1 and E2, the two that survived Phase 5, were closed in
-Phase 6. The nearest thing to a live risk is **E11**: not a defect, but the
+**No S1 is open, and nothing in the recommendation engine or the panel is
+open.** Everything remaining is events, deploy, or accepted. The nearest thing
+to a live risk is **E11**: not a defect, but the
 reason a demo can show a correct model panel on the first cart and
 `fallback_ratelimit` on the second within the same minute.
 
@@ -1175,6 +1229,14 @@ obvious.
   on another port (`npm run build && npx next start -p 3211`), which has no such
   restriction and additionally lets you vary `GROQ_API_KEY` per launch without
   editing `.env.local`.
+- **CSS animations are frozen in the pane, exactly like `requestAnimationFrame`.**
+  `document.timeline.currentTime` reads 0, so an element sits at its first
+  keyframe forever — the Browse & Replace sheet appeared to render entirely
+  below the fold. To measure resting geometry, finish the animations first:
+  `el.getAnimations().forEach(a => a.finish())`.
+- **`javascript_tool` shares one scope across calls**, so a second call
+  declaring `const rows` fails with "already been declared". Wrap each snippet
+  in an IIFE.
 - **A browser-pane error can contradict a clean build.** A long-lived preview tab
   kept reporting a stale import error after a constant was renamed — surviving
   `preview_stop`, deleting `.next`, and a fresh `preview_start`. The disk, `tsc`

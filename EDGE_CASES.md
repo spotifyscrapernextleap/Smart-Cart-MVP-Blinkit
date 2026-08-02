@@ -111,8 +111,8 @@ code rather than by the model.
 | F2 | ✅ S2 | ⚠️ **Height still changes on ADD.** Spec forbids shift on *resolve* and separately mandates no backfill — so removing a row necessarily shrinks the panel. The two rules together still let the bill jump. | Animate the row out over ~200ms rather than removing it instantly, so the shift is legible as a consequence of the user's own tap rather than a glitch. | 5 |
 | F3 | ✅ S2 | Removing a panel-added product from the cart must restore its row **in its original position with its original slot**. | Keep the full resolved row list in state; render it minus ids currently in the cart, rather than mutating the list on add. Restoration then falls out for free. | 5 |
 | F4 | ✅ S2 | Rapid double-tap on ADD double-adds. | Disable the control while the add is in flight; cart writes keyed by productId are idempotent. | 5 |
-| F5 | S2 | Browse & Replace sheet opens with 0 or 1 alternatives (see D7). | Guard: if the shortlist minus the displayed product and minus cart contents is empty, disable the control rather than opening an empty sheet. | 7 |
-| F6 | S2 | Replacement product is already in the cart. | Exclude cart contents from the sheet, same rule as D1. | 7 |
+| F5 | ✅ S2 | Browse & Replace sheet opens with 0 or 1 alternatives (see D7). | `canBrowse` returns false when the shortlist minus the displayed product minus cart contents is empty, and the row renders an inert "No alternatives left" in place of the control — same height, so nothing shifts. One remaining alternative still opens the sheet; that is a real choice, not an empty one. | 7 |
+| F6 | ✅ S2 | Replacement product is already in the cart. | `alternativesFor` excludes cart contents. **Not redundant with the shortlist's own exclusion:** the panel is computed once at mount and cached, so by the time the sheet opens the cart can hold products the shortlist was built without. Verified live and in 32 suite checks across four carts. | 7 |
 | F7 | ✅ S3 | Dismiss, then navigate away and back — does the panel return? | Define as **session-scoped**: dismissal persists for the visit, matching the spec's "remainder of the visit". | 5 |
 | F8 | ✅ S3 | Sticky `ViewCartBar` overlapping the iOS home indicator. | `env(safe-area-inset-bottom)` padding. Test on a real phone, not just devtools. | 3 |
 
@@ -158,7 +158,7 @@ All three original items are now resolved. One new one is open.
 ## Summary
 
 Two entries were withdrawn and five added across the build. Current shape after
-Phase 6: **51 closed, 1 withdrawn, 8 open.**
+Phase 7: **53 closed, 1 withdrawn, 6 open.**
 
 - **7 × S1 the spec does not mention** — C1 (hydration), C2 (stale cart ids),
   D1 (cart contents recommended), **D1a (cart *tiles* recommended)**, D2 (undefined
@@ -167,8 +167,9 @@ Phase 6: **51 closed, 1 withdrawn, 8 open.**
 - **Every S1 is now closed.** The two that were open through Phase 5, E1 and E2,
   were closed in Phase 6 and verified: no key in the built client bundle, and no
   purchase claim reachable on a slot-B line.
-- **The remaining open items are Phase 7 (F5, F6), Phase 8 (G2, G3, G4) and
-  Phase 9 (H3, H4), plus D7 and H2.** None is an S1.
+- **The remaining open items are Phase 8 (G2, G3, G4) and Phase 9 (H3, H4),
+  plus D7, H2 and E11.** None is an S1, and none is in the recommendation
+  engine or the panel.
 - **E11 is the one to watch before a demo.** It is not a code defect — the panel
   degrades correctly — but it is the reason a live walkthrough can show
   `fallback_ratelimit` on the second cart while everything looks fine on the
