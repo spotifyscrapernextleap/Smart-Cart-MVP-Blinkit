@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo } from "react";
 
 import ProductCard from "@/components/ProductCard";
 import SearchBar from "@/components/SearchBar";
+import ViewCartBar from "@/components/ViewCartBar";
 import { logEvent } from "@/lib/events";
 import { search } from "@/lib/search";
 
@@ -82,6 +83,8 @@ function SearchResults() {
           </ul>
         </>
       )}
+
+      <ViewCartBar />
     </main>
   );
 }

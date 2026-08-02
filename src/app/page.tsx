@@ -1,6 +1,7 @@
 import AppHeader from "@/components/AppHeader";
 import CategoryGrid from "@/components/CategoryGrid";
 import SearchBar from "@/components/SearchBar";
+import ViewCartBar from "@/components/ViewCartBar";
 
 /**
  * HOME.
@@ -17,6 +18,7 @@ export default function HomePage() {
         <SearchBar />
       </div>
       <CategoryGrid />
+      <ViewCartBar />
     </main>
   );
 }

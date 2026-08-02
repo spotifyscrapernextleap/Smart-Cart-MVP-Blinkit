@@ -397,3 +397,116 @@ erased before Node sees them and need no extension.
   `get_page_text` for content. Worth a visual pass before deploy.
 
 ---
+
+## Phase 3 — Cart
+
+**Completed.** Spec test passes live (3 products / 2 tiles / correct subtotal /
+survives refresh / empties on reset); verification suite passes 22/22. Detail
+in [`phases/phase-3-cart/README.md`](phases/phase-3-cart/README.md).
+
+Closed edge cases **C2** (stale cart ids healed on read), **C5** (quantity
+clamp), **F8** (safe-area-inset-bottom on the sticky bar).
+
+### Decisions
+
+**D19 — `cart.ts` never caches; every read goes through storage and re-sanitises.**
+Unlike `catalogue.ts` (static import, immutable for the life of the process),
+the cart can be mutated by the user at any time and must reflect a catalogue
+that might have been rebuilt since the page loaded (edge case A1: product ids
+are positional and rebuilds are frequent during this build). A module-level
+cache would risk serving a snapshot that no longer matches either storage or the
+catalogue. `getCart()` re-reads and re-validates on every call; the cost is one
+JSON parse and a linear scan over a cart of a handful of items, which is free.
+
+**D20 — Stale ids are healed on read, not just filtered for display.**
+`getCart()` drops any `productId` the catalogue no longer has (C2) and, if that
+changed anything, **rewrites storage** with the cleaned list — silently, no
+event, since healing a corrupted value isn't a user action. Verified directly:
+seeded storage with one good line and one line for an id the catalogue doesn't
+have, called `getCart()`, and confirmed both the returned value *and the
+underlying storage* were clean afterward. Without the storage rewrite, the same
+stale id would be re-read (and re-dropped) on every subsequent call forever.
+
+**D21 — `useSyncExternalStore`, not hand-rolled `useEffect` + `useState`.**
+The first draft of `useCart.ts` read the cart in a `useEffect` and called
+`setState` directly in the effect body — the standard-looking pattern for
+"hydrate from a client-only source after mount" that the rest of this codebase
+already uses elsewhere for SSR safety. `eslint-plugin-react-hooks`' newer
+`react-hooks/set-state-in-effect` rule flagged both call sites as errors.
+
+Two ways to make the error go away were considered and rejected:
+
+- **Lazy `useState` initializer** (read storage as the initial state instead of
+  in an effect) — this would run during the *hydration* render pass, which
+  happens in the browser where `window` exists, while the *server*-rendered
+  HTML has no window and shows empty/zero. That reintroduces the exact
+  hydration mismatch (C1) the effect-based approach exists to avoid. Rejected.
+- **Wrap the same code in a named function and call it** — satisfies the
+  linter's pattern-match without changing the underlying behaviour or timing.
+  Correctly identified as lint theater and rejected.
+
+`useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)` is the actual
+tool React ships for this problem and has no such issue: it is a React built-in
+(not a state library, per the spec's exclusion list), and its
+`getServerSnapshot` parameter *is* the sanctioned way to say "empty on the
+server, real value on the client" without a manual effect. The one requirement
+it imposes — `getSnapshot` must return a referentially stable value when
+nothing changed, or it re-renders in a loop — is satisfied for the `lines`
+array via a small cache in `cart.ts` (`getCartSnapshot()`, keyed on the
+serialised value) and needs no such handling for `useCartQuantity`, since a
+`number` compares by value.
+
+**D22 — `cart_add`/`cart_remove` fire only on the 0↔1 transition, not on every tap.**
+Spec §3.6 gives `cart_add` a `source: "search" | "panel"` field but never says
+whether it fires per-tap or per-entry, and never anticipates a third surface —
+the cart page's own stepper — which is neither "search" nor "panel". Decided by
+extension of the spec's own stated principle for `slot` on panel events ("load-
+bearing... aggregate numbers are useless"): `cart_add.source` exists to
+attribute which channel a product entered through, so logging it again on a
+later "+" tap would misattribute a pure quantity bump as a fresh conversion and
+inflate that channel's numbers for nothing. `cart_remove` is scoped
+symmetrically for the same reason, and has no source-ambiguity problem to begin
+with. Concretely:
+
+- `cart_add` logs only on quantity 0 → ≥1 (a product entering the cart). This
+  can only happen from `ProductCard`'s ADD button, never from `CartLine` (which
+  only ever renders for a product already at quantity ≥1).
+- `cart_remove` logs only on quantity ≥1 → 0 (a product leaving the cart),
+  whichever control triggered it.
+- Every other tap — increment above 1, decrement that stays above 0 — mutates
+  the cart but logs nothing.
+
+Verified live: one ADD → one `cart_add`. Two subsequent "+" taps (quantity
+1→2→3) → still exactly one `cart_add`, zero `cart_remove`. A "−" tap that
+leaves quantity at 2 → still zero `cart_remove`. The final "−" to 0, from the
+*cart page's* stepper → exactly one `cart_remove`, line removed, empty state
+rendered.
+
+### Gotchas
+
+- **Stopping and restarting the dev server does not necessarily clear a
+  browser tab's stale bundle.** After renaming `SEARCH_RELEVANCE_BAND` to
+  `SEARCH_MAX_SCORE` (Phase 2, already committed), one long-lived preview tab
+  kept reporting the old export was missing — even after `preview_stop`,
+  deleting `.next`, and a fresh `preview_start`. The disk, `tsc`, `eslint`, and
+  `next build` were all already clean; the error was coming from the *tab's own
+  cached module graph*, not the server. A brand-new tab (`tabs_create`) loaded
+  correctly on the first try. If a browser-pane error contradicts a clean build,
+  open a fresh tab before spending time chasing a phantom bug.
+- **`read_page`'s `interactive` filter can silently truncate or omit content**
+  on a page with many results (e.g. 33 amul results) — it reported "(empty
+  page)" once even though `get_page_text` showed full content and no console
+  errors existed. Cross-check with `get_page_text` or the `all` filter before
+  concluding a page failed to render.
+- **Coordinate-based `computer` clicks on `ref_N` intermittently missed their
+  target** in this session after a viewport resize — clicks landed but the
+  cart never changed, with no console error. Confirmed the underlying button
+  and handler were correct by dispatching `.click()` on the DOM node directly
+  via `javascript_tool`, which worked every time. Prefer direct `.click()` over
+  coordinate clicks when verifying logic, not pixel-perfect hit-testing.
+- **React state updates from a click are not visible in the same synchronous
+  read.** Capturing `innerText` in the same `javascript_exec` call as the
+  `.click()` that triggers it can observe the pre-update DOM. Re-read in a
+  separate call after the click.
+
+---

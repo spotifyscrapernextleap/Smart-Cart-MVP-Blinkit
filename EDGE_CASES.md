@@ -56,10 +56,10 @@ be missed, because there is no instruction to follow.
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
 | C1 | ✅ **S1** | **Hydration mismatch.** Reading `localStorage` during render makes the server produce an empty cart and the client a full one. React throws a hydration error and the page can blank. | All storage reads happen in `useEffect`, never during render. First paint is always the empty/skeleton state. | 1 |
-| C2 | **S1** | ⚠️ **Cart holds a productId that no longer exists** — stale `localStorage` from before a catalogue rebuild, which given A1 is near-certain during development. `getProduct(id)` returns `undefined` and the cart page crashes on `.price`. | `readCart()` filters out ids absent from the catalogue and rewrites storage. Never trust persisted ids. Same guard on the panel cache. | 3 |
+| C2 | ✅ **S1** | ⚠️ **Cart holds a productId that no longer exists** — stale `localStorage` from before a catalogue rebuild, which given A1 is near-certain during development. `getProduct(id)` returns `undefined` and the cart page crashes on `.price`. | `readCart()` filters out ids absent from the catalogue and rewrites storage. Never trust persisted ids. Same guard on the panel cache. | 3 |
 | C3 | ✅ S2 | `localStorage` unavailable — Safari private mode, disabled cookies, quota exceeded. | `storage.ts` wraps every access in try/catch and degrades to in-memory. The app must run, losing only persistence. | 1 |
 | C4 | ✅ S2 | Corrupt JSON in any `sc_*` key. | Typed wrapper catches parse errors, clears that key, returns the default. | 1 |
-| C5 | S2 | Negative, zero, fractional or absurd quantities via direct storage editing. | Clamp to integer 1..99 on read and write. Quantity 0 removes the line. | 3 |
+| C5 | ✅ S2 | Negative, zero, fractional or absurd quantities via direct storage editing. | Clamp to integer 1..99 on read and write. Quantity 0 removes the line. | 3 |
 | C6 | ✅ S3 | `?reset=1` clearing keys but leaving the param in history, so a back-navigation re-clears. | `history.replaceState` to strip the param after clearing. | 1 |
 | C7 | S3 | Panel cache grows unbounded — one entry per distinct cart signature. | Cap `sc_panel_cache` at the most recent ~20 signatures. | 5 |
 
@@ -112,7 +112,7 @@ code rather than by the model.
 | F5 | S2 | Browse & Replace sheet opens with 0 or 1 alternatives (see D7). | Guard: if the shortlist minus the displayed product and minus cart contents is empty, disable the control rather than opening an empty sheet. | 7 |
 | F6 | S2 | Replacement product is already in the cart. | Exclude cart contents from the sheet, same rule as D1. | 7 |
 | F7 | S3 | Dismiss, then navigate away and back — does the panel return? | Define as **session-scoped**: dismissal persists for the visit, matching the spec's "remainder of the visit". | 5 |
-| F8 | S3 | Sticky `ViewCartBar` overlapping the iOS home indicator. | `env(safe-area-inset-bottom)` padding. Test on a real phone, not just devtools. | 3 |
+| F8 | ✅ S3 | Sticky `ViewCartBar` overlapping the iOS home indicator. | `env(safe-area-inset-bottom)` padding. Test on a real phone, not just devtools. | 3 |
 
 ---
 

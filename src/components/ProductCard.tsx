@@ -1,9 +1,13 @@
 "use client";
 
 import { getTileLabel } from "@/lib/catalogue";
+import { addToCart, removeFromCart, setQuantity } from "@/lib/cart";
+import { logEvent } from "@/lib/events";
+import { useCartQuantity } from "@/lib/useCart";
 import type { Product } from "@/lib/types";
 
 import ProductImage from "./ProductImage";
+import QuantityStepper from "./QuantityStepper";
 
 /**
  * A product in the search results.
@@ -14,10 +18,35 @@ import ProductImage from "./ProductImage";
  *
  * Names run to 122 characters, so the title is clamped to two lines. (EDGE_CASES A4)
  *
- * The ADD control is wired to the cart in Phase 3. It is rendered here so the
- * card's layout is final and does not shift when the behaviour lands.
+ * `cart_add`/`cart_remove` fire only on the 0↔1 transition — the moment a
+ * product enters or leaves the cart — not on every +/- tap. `cart_add.source`
+ * exists to attribute which channel a product entered through; logging it again
+ * on a later "+" tap would misattribute a pure quantity bump as a fresh search
+ * conversion and inflate that channel's numbers for no reason. This mirrors why
+ * `slot` is load-bearing on panel events (spec §3.6): the event has to mean the
+ * thing it is named, not every keystroke of interaction with it.
  */
 export default function ProductCard({ product }: { product: Product }) {
+  const quantity = useCartQuantity(product.id);
+
+  const handleAdd = () => {
+    addToCart(product.id, 1);
+    logEvent("cart_add", { productId: product.id, tile: product.tile, source: "search" });
+  };
+
+  const handleIncrement = () => {
+    addToCart(product.id, 1);
+  };
+
+  const handleDecrement = () => {
+    if (quantity <= 1) {
+      removeFromCart(product.id);
+      logEvent("cart_remove", { productId: product.id, tile: product.tile });
+    } else {
+      setQuantity(product.id, quantity - 1);
+    }
+  };
+
   return (
     <article className="flex w-full flex-col rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-2.5">
       <div className="mb-2 flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-[var(--color-surface-sunken)]">
@@ -40,12 +69,13 @@ export default function ProductCard({ product }: { product: Product }) {
 
       <div className="mt-auto flex items-center justify-between pt-2">
         <span className="text-[14px] font-semibold">₹{product.price}</span>
-        <button
-          type="button"
-          className="rounded-lg border border-[var(--color-brand-green)] px-3.5 py-1 text-[13px] font-bold text-[var(--color-brand-green)]"
-        >
-          ADD
-        </button>
+        <QuantityStepper
+          quantity={quantity}
+          onAdd={handleAdd}
+          onIncrement={handleIncrement}
+          onDecrement={handleDecrement}
+          label={product.name}
+        />
       </div>
     </article>
   );
