@@ -8,16 +8,18 @@
  */
 export default function BillDetails({ subtotal }: { subtotal: number }) {
   return (
-    <section className="border-t border-[var(--color-hairline)] px-4 py-4">
-      <h2 className="mb-3 text-[13px] font-semibold tracking-wide text-[var(--color-ink-muted)] uppercase">
-        Bill details
-      </h2>
-      <div className="flex items-center justify-between text-[14px] text-[var(--color-ink)]">
-        <span>Item total</span>
+    <section className="px-4 py-4">
+      <h2 className="mb-3 text-[14px] font-bold text-[var(--color-ink)]">Bill details</h2>
+      <div className="flex items-center justify-between text-[13px] text-[var(--color-ink)]">
+        <span>Items total</span>
         <span>₹{subtotal}</span>
       </div>
-      <div className="mt-3 flex items-center justify-between border-t border-dashed border-[var(--color-hairline)] pt-3 text-[15px] font-bold">
-        <span>To pay</span>
+      <div className="mt-2 flex items-center justify-between text-[13px] text-[var(--color-ink)]">
+        <span>Delivery fee</span>
+        <span className="font-semibold text-[var(--color-brand-green)]">FREE</span>
+      </div>
+      <div className="mt-3 flex items-center justify-between border-t border-[var(--color-hairline)] pt-3 text-[15px] font-bold">
+        <span>Grand total</span>
         <span>₹{subtotal}</span>
       </div>
     </section>

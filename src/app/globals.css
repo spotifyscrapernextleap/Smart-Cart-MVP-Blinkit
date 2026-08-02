@@ -65,6 +65,70 @@ body {
   -webkit-line-clamp: 2;
 }
 
+/*
+ * Smart Cart panel row collapse.
+ *
+ * The spec forbids backfilling after an add, so removing a row necessarily
+ * shrinks the panel and pulls Bill details upward. Animating the collapse makes
+ * that read as a consequence of the user's own tap rather than a glitch.
+ * (EDGE_CASES F2)
+ */
+/*
+ * Collapsed with grid-template-rows rather than max-height.
+ *
+ * A max-height equal to the row's content height silently clips it: Tailwind
+ * sets box-sizing: border-box, so the 1px top border eats into the cap and the
+ * resolved panel measured 2px shorter than its own skeleton — the exact layout
+ * shift F1 exists to prevent, just small enough to miss by eye. 1fr → 0fr
+ * animates to precisely zero and imposes no cap at rest, so no magic number has
+ * to be kept in sync with the row height.
+ */
+.panel-row {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 220ms ease,
+    opacity 160ms ease,
+    border-top-width 220ms ease;
+}
+.panel-row > * {
+  overflow: hidden;
+  min-height: 0;
+}
+.panel-row[data-exiting] {
+  grid-template-rows: 0fr;
+  border-top-width: 0;
+  opacity: 0;
+}
+
+.panel-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-panel-accent) 8%, transparent) 25%,
+    color-mix(in srgb, var(--color-panel-accent) 16%, transparent) 37%,
+    color-mix(in srgb, var(--color-panel-accent) 8%, transparent) 63%
+  );
+  background-size: 400% 100%;
+  animation: panel-shimmer 1.4s ease infinite;
+}
+@keyframes panel-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-row {
+    transition: none;
+  }
+  .panel-shimmer {
+    animation: none;
+  }
+}
+
 /* Visually hidden but focusable and announced. */
 .sr-only {
   position: absolute;

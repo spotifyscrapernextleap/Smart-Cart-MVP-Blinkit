@@ -65,5 +65,8 @@ export async function POST(request: Request) {
   const shortlists = buildShortlists(cart);
   const panel = buildFallbackPanel(shortlists, cartSignature);
 
-  return NextResponse.json(panel);
+  // No model layer exists yet, which is indistinguishable from having no key
+  // configured — and is the same thing the client needs to know either way.
+  // Phase 6 replaces this with the real per-attempt outcome.
+  return NextResponse.json({ ...panel, outcome: "fallback_nokey" });
 }

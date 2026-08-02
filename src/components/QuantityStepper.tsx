@@ -16,6 +16,8 @@ export default function QuantityStepper({
   onIncrement,
   onDecrement,
   label,
+  tone = "green",
+  disabled = false,
 }: {
   quantity: number;
   onAdd: () => void;
@@ -23,13 +25,21 @@ export default function QuantityStepper({
   onDecrement: () => void;
   /** Product name, for the +/- aria-labels. */
   label: string;
+  /** Green in the real cart, violet in the Smart Cart panel. */
+  tone?: "green" | "violet";
+  disabled?: boolean;
 }) {
+  const accent =
+    tone === "violet" ? "var(--color-panel-accent)" : "var(--color-brand-green)";
+
   if (quantity <= 0) {
     return (
       <button
         type="button"
         onClick={onAdd}
-        className="rounded-lg border border-[var(--color-brand-green)] px-3.5 py-1 text-[13px] font-bold text-[var(--color-brand-green)]"
+        disabled={disabled}
+        style={{ borderColor: accent, color: accent }}
+        className="rounded-lg border px-3.5 py-1 text-[13px] font-bold disabled:opacity-50"
       >
         ADD
       </button>
@@ -37,7 +47,10 @@ export default function QuantityStepper({
   }
 
   return (
-    <div className="flex items-center gap-2.5 rounded-lg bg-[var(--color-brand-green)] px-1.5 py-1 text-white">
+    <div
+      style={{ backgroundColor: accent }}
+      className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 text-white"
+    >
       <button
         type="button"
         onClick={onDecrement}

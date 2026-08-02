@@ -89,3 +89,20 @@ export const MAX_CART_QUANTITY = 99;
  * Browse & Replace, a real choice. (EDGE_CASES D6)
  */
 export const MAX_TILES_PER_SECTION_OFFERED = 2;
+
+/**
+ * Cart signatures kept in `sc_panel_cache` before the oldest are evicted.
+ * One entry per distinct cart the user has taken to checkout, so without a cap
+ * it grows for the life of the browser profile. (EDGE_CASES C7)
+ */
+export const PANEL_CACHE_MAX_ENTRIES = 20;
+
+/**
+ * How long a row takes to collapse out of the panel after being added.
+ *
+ * The spec forbids a layout shift when the panel *resolves*, and separately
+ * forbids backfilling after an add — so removing a row necessarily shrinks the
+ * panel and moves Bill details up. Animating that makes it read as a
+ * consequence of the user's own tap rather than a glitch. (EDGE_CASES F2)
+ */
+export const PANEL_ROW_EXIT_MS = 220;

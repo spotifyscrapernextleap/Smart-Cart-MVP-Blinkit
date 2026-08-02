@@ -603,3 +603,119 @@ computed from the cart contents.
   cannot simply edit `history.json` between calls in the same process.
 
 ---
+
+## Phase 5 — Panel UI
+
+**Completed.** Spec test passes live on all four clauses; panel cache suite
+passes 11/11. Detail in [`phases/phase-5-panel-ui/README.md`](phases/phase-5-panel-ui/README.md).
+
+Closed edge cases **C7** (cache cap), **F1** (no shift on resolve), **F2**
+(animated row exit), **F3** (row restored in position), **F4** (double-tap
+guard), **F7** (dismiss scope), **G1** (one impression per mount).
+
+### The prototype
+
+The owner supplied two screenshots of a prototype checkout and asked for the
+panel to emulate it. **Adopted:** lavender-tinted panel with a violet accent, a
+spark icon beside a "Smart Cart" heading over "Suggested for you", a dismiss
+control top-right, per-row layout of image → name → control-over-price, the
+panel's position between cart items and Bill details, and the surrounding chrome
+(delivery-time card, address block, Bill details with a FREE delivery line).
+
+Four things in it were overruled by the project's own documents. Two were
+decided by the owner when asked; two are unambiguous corrections the docs
+already mandate.
+
+**D26 — The row control is ADD, not a `− 0 +` stepper.**
+The prototype's stepper sits at zero by default. Idea doc §7 flags this by name
+as a required fix: one control with two meanings, the destructive one as the
+default state, so a user reducing 2 → 1 → 0 "falls off a cliff into deletion".
+The stated resolution is an ADD button that becomes a stepper only after the
+first tap, which is also what spec 5.2 lists. Panel rows therefore match the
+cart's existing steppers.
+
+**D27 — Every row carries a reason line.**
+The prototype has none — rows show name, Browse & Replace, price. The idea doc
+calls the reason line **P0 and "not decorative"**: H2 identifies mindspace as the
+problem and the reason line is the only element in the design that builds it, so
+"a product tile without a reason is inventory". It is the feature, so it ships.
+
+**D28 — No bulk-add tick. Owner's decision.**
+The prototype pairs a green ✓ with the red ✗. Idea doc §7 calls it "recommended
+cut for v1" and §12 lists it as blocking open question #2; spec §8 lists it under
+Deferred. Asked, and the owner chose to cut it: highest-regret action on the
+screen, no undo, contradicts the panel's purpose, and makes per-slot attribution
+meaningless. Header carries dismiss only.
+
+**D29 — No struck-through `mrp`, no "Special Price" tag. Owner's decision.**
+The prototype shows ₹238 with ₹280 struck through. Spec §8 defers this to P1
+because shipping a discount treatment makes recommendation lift and discount lift
+inseparable. Asked, and the owner chose plain prices. `mrp` stays in the data,
+unrendered.
+
+Dismissal collapses to the header with a chevron to re-expand, per idea doc §7
+("The Smart Cart header remains, with an affordance to bring the suggestions
+back"), rather than removing the section outright.
+
+One departure of my own: **row separators are soft solid hairlines, not dashed.**
+The idea doc's design note warns that dashed borders "carry heavy coupon and
+promo connotation in Indian commerce UI, and an ad-styled block is the visual
+language users have trained themselves to skip — a real risk when trust is the
+dominant barrier", and recommends keeping the tinted background while removing
+row borders. The panel's dashed *outer* border is retained as the prototype's
+signature; the internal dashes are not.
+
+### Decisions
+
+**D30 — A StrictMode fetch guard and an in-flight cancellation flag cannot coexist.**
+The panel hung on its skeleton forever in development. The sequence: effect runs
+and starts the request → React's StrictMode cleanup sets `cancelled = true` →
+the effect re-runs but returns early on the ref guard that exists to prevent a
+second request (G1) → the original response resolves, sees `cancelled`, and is
+discarded. Nothing ever restarts it.
+
+The two mechanisms solve the same problem in incompatible ways. The ref guard is
+the one worth keeping, because it also prevents the doubled `panel_impression`
+and the doubled request against a rate-limited free tier. The cancellation flag
+is gone; a state update after a genuine unmount is harmless in React 18+.
+
+**D31 — `RecommendResponse.outcome` is an addition to the spec's Step 11 shape.**
+`source` only distinguishes model from not-model, but `recommend_call.outcome`
+(spec §3.6) needs to know *why* — and on screen a fallback panel and a model
+panel are identical, so the client cannot infer it. The route now returns
+`outcome` alongside the spec's fields.
+
+`RecommendOutcome` also gains a sixth value beyond the spec's five:
+**`fallback_nokey`**, meaning no model was attempted because no key is
+configured. That is a distinct and highly actionable diagnosis, and the single
+most likely reason a deploy that works locally serves fallback panels in
+production — which is exactly what spec §6 Phase 9's test exists to catch.
+Folding it into `fallback_error` would bury it behind genuine failures.
+
+### Gotchas
+
+- **A `max-height` equal to a row's content height silently clips it.** Tailwind
+  sets `box-sizing: border-box`, so a 1px row border eats into the cap. This made
+  the resolved panel measure 2px shorter than its own skeleton — a real F1
+  violation, far too small to catch by eye. Fixed with
+  `grid-template-rows: 1fr → 0fr`, which collapses to exactly zero and imposes no
+  cap at rest, so no magic number has to be kept in sync with the row height.
+- **Never put a side effect inside a `setState` updater function.** React
+  deliberately double-invokes updaters under StrictMode to surface impure ones,
+  so a `logEvent` in there fires twice per interaction. This was silently
+  doubling `panel_dismiss`. Updaters must be pure functions of previous state;
+  compute and log outside.
+- **`requestAnimationFrame` never fires while the browser pane is hidden**, so
+  rAF-based measurement hangs until the tool times out. Use `setTimeout`
+  instead — timers still run. Screenshots were unavailable again this session
+  for the same reason; layout was verified by measuring `getBoundingClientRect`
+  in both states instead, which is stronger evidence than a screenshot anyway.
+- **To observe the skeleton at all, patch `window.fetch`** to hold
+  `/api/recommend` open, then navigate away and back *client-side* so the patch
+  survives (a full reload discards it). Clear `sc_panel_cache` first or the
+  remount hits the cache and never shows a skeleton.
+- **The panel is deliberately absent on an empty cart.** The idea doc's "no
+  minimum cart size" removed a two-item floor; it does not mean the panel should
+  render over an empty basket.
+
+---

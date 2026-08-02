@@ -61,7 +61,7 @@ be missed, because there is no instruction to follow.
 | C4 | ✅ S2 | Corrupt JSON in any `sc_*` key. | Typed wrapper catches parse errors, clears that key, returns the default. | 1 |
 | C5 | ✅ S2 | Negative, zero, fractional or absurd quantities via direct storage editing. | Clamp to integer 1..99 on read and write. Quantity 0 removes the line. | 3 |
 | C6 | ✅ S3 | `?reset=1` clearing keys but leaving the param in history, so a back-navigation re-clears. | `history.replaceState` to strip the param after clearing. | 1 |
-| C7 | S3 | Panel cache grows unbounded — one entry per distinct cart signature. | Cap `sc_panel_cache` at the most recent ~20 signatures. | 5 |
+| C7 | ✅ S3 | Panel cache grows unbounded — one entry per distinct cart signature. | Cap `sc_panel_cache` at the most recent ~20 signatures. | 5 |
 
 ---
 
@@ -105,13 +105,13 @@ code rather than by the model.
 
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
-| F1 | **S1** | Layout shift when the skeleton resolves, moving Bill details under the user's thumb mid-tap. | Four-row fixed-height skeleton, identical height to the resolved panel. Measure both. | 5 |
-| F2 | S2 | ⚠️ **Height still changes on ADD.** Spec forbids shift on *resolve* and separately mandates no backfill — so removing a row necessarily shrinks the panel. The two rules together still let the bill jump. | Animate the row out over ~200ms rather than removing it instantly, so the shift is legible as a consequence of the user's own tap rather than a glitch. | 5 |
-| F3 | S2 | Removing a panel-added product from the cart must restore its row **in its original position with its original slot**. | Keep the full resolved row list in state; render it minus ids currently in the cart, rather than mutating the list on add. Restoration then falls out for free. | 5 |
-| F4 | S2 | Rapid double-tap on ADD double-adds. | Disable the control while the add is in flight; cart writes keyed by productId are idempotent. | 5 |
+| F1 | ✅ **S1** | Layout shift when the skeleton resolves, moving Bill details under the user's thumb mid-tap. | Four-row fixed-height skeleton, identical height to the resolved panel. Measure both. | 5 |
+| F2 | ✅ S2 | ⚠️ **Height still changes on ADD.** Spec forbids shift on *resolve* and separately mandates no backfill — so removing a row necessarily shrinks the panel. The two rules together still let the bill jump. | Animate the row out over ~200ms rather than removing it instantly, so the shift is legible as a consequence of the user's own tap rather than a glitch. | 5 |
+| F3 | ✅ S2 | Removing a panel-added product from the cart must restore its row **in its original position with its original slot**. | Keep the full resolved row list in state; render it minus ids currently in the cart, rather than mutating the list on add. Restoration then falls out for free. | 5 |
+| F4 | ✅ S2 | Rapid double-tap on ADD double-adds. | Disable the control while the add is in flight; cart writes keyed by productId are idempotent. | 5 |
 | F5 | S2 | Browse & Replace sheet opens with 0 or 1 alternatives (see D7). | Guard: if the shortlist minus the displayed product and minus cart contents is empty, disable the control rather than opening an empty sheet. | 7 |
 | F6 | S2 | Replacement product is already in the cart. | Exclude cart contents from the sheet, same rule as D1. | 7 |
-| F7 | S3 | Dismiss, then navigate away and back — does the panel return? | Define as **session-scoped**: dismissal persists for the visit, matching the spec's "remainder of the visit". | 5 |
+| F7 | ✅ S3 | Dismiss, then navigate away and back — does the panel return? | Define as **session-scoped**: dismissal persists for the visit, matching the spec's "remainder of the visit". | 5 |
 | F8 | ✅ S3 | Sticky `ViewCartBar` overlapping the iOS home indicator. | `env(safe-area-inset-bottom)` padding. Test on a real phone, not just devtools. | 3 |
 
 ---
@@ -120,7 +120,7 @@ code rather than by the model.
 
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
-| G1 | S2 | ⚠️ **React 18 StrictMode double-mounts effects in dev**, firing `panel_impression` and the recommend call twice. Inflates every metric and doubles Groq usage against a rate-limited free tier. | Guard the mount-time fetch with a ref keyed by cart signature. Verify exactly one `recommend_call` per cart in the events log. | 5, 8 |
+| G1 | ✅ S2 | ⚠️ **React 18 StrictMode double-mounts effects in dev**, firing `panel_impression` and the recommend call twice. Inflates every metric and doubles Groq usage against a rate-limited free tier. | Guard the mount-time fetch with a ref keyed by cart signature. Verify exactly one `recommend_call` per cart in the events log. | 5, 8 |
 | G2 | S2 | `logEvent` called during SSR. | Same `typeof window` guard as all storage. | 8 |
 | G3 | S2 | Event cap of 500 drops the oldest — including the `panel_impression` that a later `panel_add` refers to, breaking attribution. | Accepted at 500 for a demo-length session. Trim on write, never mid-read. | 8 |
 | G4 | S3 | `recommend_call.latencyMs` measured client-side includes network; measured server-side does not. | Define as **client-side round trip**, since that is what the user experiences. State it in the events README. | 8 |

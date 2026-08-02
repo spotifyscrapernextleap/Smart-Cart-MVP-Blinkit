@@ -117,6 +117,15 @@ export interface RecommendResponse {
    * from here, so opening the sheet costs no network call.
    */
   shortlists: Record<TileId, ProductId[]>;
+  /**
+   * Beyond the spec's Step 11 shape, and deliberately so.
+   *
+   * `source` only says model-or-not; `recommend_call.outcome` (spec §3.6) needs
+   * to know *why*. On screen a fallback panel and a model panel are identical,
+   * so without this the client would have to guess, and "the model path stopped
+   * working" is exactly the thing the event exists to surface.
+   */
+  outcome?: RecommendOutcome;
 }
 
 export interface RecommendRequest {
@@ -159,7 +168,15 @@ export type RecommendOutcome =
   | "fallback_timeout"
   | "fallback_ratelimit"
   | "fallback_invalid"
-  | "fallback_error";
+  | "fallback_error"
+  /**
+   * Added beyond the spec's five. No model was attempted because no key is
+   * configured — which is a distinct and highly actionable diagnosis, and the
+   * single most likely reason a deploy that works locally serves fallback
+   * panels in production (spec §6 Phase 9's test exists to catch exactly this).
+   * Folding it into `fallback_error` would hide it behind genuine failures.
+   */
+  | "fallback_nokey";
 
 export interface EventPayloads {
   panel_impression: {
