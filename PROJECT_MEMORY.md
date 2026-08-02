@@ -9,7 +9,7 @@ conversation.** Read this file top to bottom before touching anything.
 
 ## START HERE — current state
 
-**Phases 0–7 are complete, tested and committed. Phase 8 is next.**
+**Phases 0–8 are complete, tested and committed. Phase 9 is next — and last.**
 
 | Phase | State | Test result |
 |---|---|---|
@@ -21,10 +21,10 @@ conversation.** Read this file top to bottom before touching anything.
 | 5 — Panel UI | ✅ committed | 11/11 panel cache |
 | 6 — Model layer | ✅ committed | 80/80 model |
 | 7 — Browse & Replace | ✅ committed | 71/71 replace |
-| **8 — Events** | **next** | (mostly done — see below) |
-| 9 — Deploy | not started | needs GitHub + Vercel |
+| 8 — Events | ✅ committed | 43/43 events |
+| **9 — Deploy** | **next** | needs GitHub + Vercel |
 
-**309 checks pass across seven suites. `tsc`, `eslint --max-warnings 0` and
+**352 checks pass across eight suites. `tsc`, `eslint --max-warnings 0` and
 `next build` are all clean.**
 
 **The whole feature is now built.** Search → add to cart → checkout → a four-row
@@ -35,14 +35,18 @@ degrading to the deterministic panel on any model failure. Measured round trip
 
 ### The immediate next action
 
-Phase 8 — Events. This is **verification, not construction**: all nine event
-types are wired and have been observed live. What Phase 8 owes is a suite that
-asserts the full set, plus G2, G3 and G4. See "What is already prepared for
-Phases 8–9" near the end of this file.
+**Phase 9 — Deploy. It is the only thing left.** Push to GitHub, import into
+Vercel, set `GROQ_API_KEY` in the Vercel project settings, and test on the
+production URL from a phone.
 
-**Then Phase 9 is the only thing between this and a deployed demo**, and its
-one test that matters is `recommend_call.outcome` reading `model` on the
-deployed URL.
+The one test that matters: on the deployed URL, `recommend_call.outcome` must
+read `model`, not a fallback. `fallback_nokey` there means the env var was not
+set in Vercel; `fallback_timeout` means the region is too far for the 4s budget.
+
+**Two things to do before pushing**, both already noted below: re-check
+`git log --all -- .env.local` returns nothing (H4), and be aware that the UI has
+still never been reviewed on a real screen at more than one viewport — the
+browser pane has never composited in any session.
 
 ---
 
@@ -60,14 +64,14 @@ rationale behind the rules. Where they conflict with each other or with reality,
 the resolution is a numbered decision below.
 
 **Companion register:** [`EDGE_CASES.md`](EDGE_CASES.md) — 60 identified failure
-modes with severity, mitigation and owning phase. **53 closed, 1 withdrawn, 6
+modes with severity, mitigation and owning phase. **54 closed, 1 withdrawn, 5
 open, and every S1 is closed.** Each phase README states which it closed.
 
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
-- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D35 exist;
-  the next new decision is D36.**
+- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D36 exist;
+  the next new decision is D37.**
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
 - Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
@@ -94,6 +98,7 @@ node phases/phase-4-recommend/verify_recommend.ts
 node phases/phase-5-panel-ui/verify_panel_cache.ts
 node phases/phase-6-model/verify_model.ts
 node phases/phase-7-browse-replace/verify_replace.ts
+node phases/phase-8-events/verify_events.ts
 node phases/phase-0-data/verify_history.js
 ```
 
@@ -156,6 +161,7 @@ src/lib/
   catalogue.ts              loaders, indexed by id and tile (tile lists pre-sorted by rank)
   search.ts                 alias rewrite → Fuse.js → absolute relevance cutoff
   cart.ts                   add/remove/setQuantity/subtotal/cartSignature + sanitising
+  cartActions.ts            cart mutations paired with their events. THE only place D22 lives.
   useCart.ts                useSyncExternalStore bindings (D21)
   events.ts                 logEvent, capped, trimmed on write
   panelCache.ts             sc_panel_cache, capped, stale-id aware
@@ -1158,24 +1164,69 @@ in order. `panel_replace_open` records the displayed product for the same reason
 
 ---
 
-## What is already prepared for Phases 8–9
+## Phase 8 — Events
 
-### Phase 8 — Events
+**Completed.** Spec test passes live — a full flow produced 11 events covering
+all nine types; verification suite passes 43/43. Detail in
+[`phases/phase-8-events/README.md`](phases/phase-8-events/README.md).
 
-- **`events.ts` already exists** (D17) and **all nine** event types are now wired
-  and have been observed live: `search`, `cart_add`, `cart_remove`,
-  `panel_impression`, `panel_add`, `panel_dismiss`, `recommend_call`,
-  `panel_replace_open`, `panel_replace_done`. **Phase 8 constructs nothing** —
-  it asserts the full set and closes G2, G3, G4.
-- **`recommend_call.outcome` now carries real values.** Observed live:
-  `model` (latency 1352ms), `fallback_nokey`, `fallback_timeout`,
-  `fallback_ratelimit`. Only `fallback_error` and `fallback_invalid` have not
-  been seen in the wild.
-- Open: G2 (SSR guard — already implemented, needs a test), G3
-  (cap dropping an impression a later add refers to), G4 (define `latencyMs` as
-  client-side round trip — already true, needs documenting).
-- **`cart_add`/`cart_remove` fire only on the 0↔1 transition** (D22). Do not
-  "fix" this into per-tap logging.
+Closed edge cases **G2** (SSR guard), **G3** (cap and its accepted cost),
+**G4** (`latencyMs` defined).
+
+This phase built almost nothing — `events.ts` shipped in Phase 2 (D17) and each
+phase wired its own call sites. What it owed was the audit, **and the audit
+found a defect on its first pass.**
+
+### Decisions
+
+**D36 — Cart mutations and their events live together, in `cartActions.ts`.**
+
+D22's rule — `cart_add`/`cart_remove` fire only on the 0↔1 transition — was
+implemented separately in `ProductCard`, `CartLine` and `SmartCartPanel`. **One
+of them drifted.** The panel's row stepper, added in Phase 5 after D22 was
+written, called `removeFromCart` directly and logged nothing, so a product could
+leave the cart with no event marking it — in a log whose entire purpose is
+attribution.
+
+The path is narrow: a panel row only shows a stepper at quantity ≥ 1, which on
+that surface means during the row's 220ms exit animation after ADD. It was still
+reproduced live, and fixed.
+
+Three call sites implementing one rule, one of them wrong, is a structural
+problem rather than a typo — so the fix was to stop having three.
+`cartActions.ts` (`addProduct`, `incrementProduct`, `decrementProduct`) is now
+the only place the rule exists, no component mutates the cart directly, and the
+rule is unit-tested against the module rather than through three components.
+
+`incrementProduct` deliberately exists even though it only calls `addToCart`:
+the absence of an event there is a decision, and it should be visible at the
+place someone would otherwise add one.
+
+### Gotchas
+
+- **"No window" does not mean "empty log".** `storage.ts` writes every value to
+  a **module-level** in-memory map as well as to localStorage — that map is what
+  keeps a session coherent when storage is unavailable (C3) — and being
+  module-level it survives a test's fake-window reset, still holding the
+  previous block's events. The first G2 check asserted `readEvents().length === 0`
+  and failed for exactly that reason. The property that matters is that the SSR
+  guard makes `logEvent` a **no-op**; assert that the log is *unchanged*, not
+  that it is empty. This applies to any future test of any `sc_*` key.
+- **`recommend_call` is not logged on a cache hit.** The event describes a call,
+  and a panel served from `sc_panel_cache` made none. Counting panel *views*
+  means counting `panel_impression`, which fires on every mount.
+- **`panel_impression` reports the rows as first shown**, from
+  `state.response.rows` rather than the Browse & Replace overlay. An impression
+  is what the panel offered; `panel_replace_done` is what the user did about it.
+  Do not "fix" it to report replaced rows.
+- **A demo session produces ~10 events** against a cap of 500, measured on the
+  spec's own full flow. That is the number that makes G3 acceptable — if the
+  event set ever grows an order of magnitude, revisit the cap rather than the
+  conclusion.
+
+---
+
+## What is already prepared for Phase 9
 
 ### Phase 9 — Deploy
 
@@ -1196,13 +1247,12 @@ in order. `panel_replace_open` records the displayed product for the same reason
 
 ---
 
-## Open edge cases (6)
+## Open edge cases (5)
 
 From [`EDGE_CASES.md`](EDGE_CASES.md). Everything else is closed or withdrawn.
 
 | Phase | Open |
 |---|---|
-| 8 | G2 SSR guard, G3 event cap breaking attribution, G4 `latencyMs` definition |
 | 9 | H3 works locally, falls back in production, H4 `.env.local` committed |
 | 4, 7 | D7 thin shortlists at a low ceiling |
 | 4, 9 | H2 serverless bundle size |

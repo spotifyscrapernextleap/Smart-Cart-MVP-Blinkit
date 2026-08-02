@@ -1,8 +1,7 @@
 "use client";
 
 import { getTileLabel } from "@/lib/catalogue";
-import { addToCart, removeFromCart, setQuantity } from "@/lib/cart";
-import { logEvent } from "@/lib/events";
+import { addProduct, decrementProduct, incrementProduct } from "@/lib/cartActions";
 import { useCartQuantity } from "@/lib/useCart";
 import type { Product } from "@/lib/types";
 
@@ -29,23 +28,9 @@ import QuantityStepper from "./QuantityStepper";
 export default function ProductCard({ product }: { product: Product }) {
   const quantity = useCartQuantity(product.id);
 
-  const handleAdd = () => {
-    addToCart(product.id, 1);
-    logEvent("cart_add", { productId: product.id, tile: product.tile, source: "search" });
-  };
-
-  const handleIncrement = () => {
-    addToCart(product.id, 1);
-  };
-
-  const handleDecrement = () => {
-    if (quantity <= 1) {
-      removeFromCart(product.id);
-      logEvent("cart_remove", { productId: product.id, tile: product.tile });
-    } else {
-      setQuantity(product.id, quantity - 1);
-    }
-  };
+  const handleAdd = () => addProduct(product, "search");
+  const handleIncrement = () => incrementProduct(product);
+  const handleDecrement = () => decrementProduct(product, quantity);
 
   return (
     <article className="flex w-full flex-col rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface)] p-2.5">

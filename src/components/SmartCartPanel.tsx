@@ -3,13 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getProduct } from "@/lib/catalogue";
-import {
-  addToCart,
-  cartSignature,
-  getCart,
-  removeFromCart,
-  setQuantity,
-} from "@/lib/cart";
+import { cartSignature, getCart } from "@/lib/cart";
+import { addProduct, decrementProduct, incrementProduct } from "@/lib/cartActions";
 import { PANEL_ROW_EXIT_MS } from "@/lib/config";
 import { logEvent } from "@/lib/events";
 import { getCachedPanel, setCachedPanel } from "@/lib/panelCache";
@@ -294,14 +289,16 @@ export default function SmartCartPanel() {
       });
     }, PANEL_ROW_EXIT_MS);
 
-    addToCart(productId, 1);
+    // panel_add first: it describes the panel interaction, and cart_add
+    // describes the cart consequence. Reading the log in order then tells the
+    // story in the order it happened.
     logEvent("panel_add", {
       productId,
       slot: row.slot,
       tile: row.tile,
       position: row.position,
     });
-    logEvent("cart_add", { productId, tile: product.tile, source: "panel" });
+    addProduct(product, "panel");
   };
 
   const browsingRow = browsing === null ? null : rows.find((r) => r.position === browsing);
@@ -369,11 +366,19 @@ export default function SmartCartPanel() {
                   .length > 0
               }
               onAdd={() => handleAdd(row.productId)}
-              onIncrement={() => addToCart(row.productId, 1)}
+              // A row's stepper is only reachable at quantity ≥ 1, which on
+              // this surface means during the row's exit animation. Narrow, but
+              // it is still a product leaving the cart, and before Phase 8 it
+              // was the one path that left no cart_remove behind.
+              onIncrement={() => {
+                const product = getProduct(row.productId);
+                if (product) incrementProduct(product);
+              }}
               onDecrement={() => {
-                const current = cartQuantities.get(row.productId) ?? 0;
-                if (current <= 1) removeFromCart(row.productId);
-                else setQuantity(row.productId, current - 1);
+                const product = getProduct(row.productId);
+                if (product) {
+                  decrementProduct(product, cartQuantities.get(row.productId) ?? 0);
+                }
               }}
               onBrowse={() => handleBrowseOpen(row)}
             />

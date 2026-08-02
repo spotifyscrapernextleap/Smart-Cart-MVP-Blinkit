@@ -1,8 +1,7 @@
 "use client";
 
 import { getProduct } from "@/lib/catalogue";
-import { addToCart, removeFromCart, setQuantity } from "@/lib/cart";
-import { logEvent } from "@/lib/events";
+import { decrementProduct, incrementProduct } from "@/lib/cartActions";
 import type { ProductId } from "@/lib/types";
 
 import ProductImage from "./ProductImage";
@@ -31,18 +30,8 @@ export default function CartLine({
   const product = getProduct(productId);
   if (!product) return null;
 
-  const handleIncrement = () => {
-    addToCart(product.id, 1);
-  };
-
-  const handleDecrement = () => {
-    if (quantity <= 1) {
-      removeFromCart(product.id);
-      logEvent("cart_remove", { productId: product.id, tile: product.tile });
-    } else {
-      setQuantity(product.id, quantity - 1);
-    }
-  };
+  const handleIncrement = () => incrementProduct(product);
+  const handleDecrement = () => decrementProduct(product, quantity);
 
   return (
     <li className="flex gap-3">

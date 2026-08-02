@@ -123,9 +123,9 @@ code rather than by the model.
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
 | G1 | ✅ S2 | ⚠️ **React 18 StrictMode double-mounts effects in dev**, firing `panel_impression` and the recommend call twice. Inflates every metric and doubles Groq usage against a rate-limited free tier. | Guard the mount-time fetch with a ref keyed by cart signature. Verify exactly one `recommend_call` per cart in the events log. | 5, 8 |
-| G2 | S2 | `logEvent` called during SSR. | Same `typeof window` guard as all storage. | 8 |
-| G3 | S2 | Event cap of 500 drops the oldest — including the `panel_impression` that a later `panel_add` refers to, breaking attribution. | Accepted at 500 for a demo-length session. Trim on write, never mid-read. | 8 |
-| G4 | S3 | `recommend_call.latencyMs` measured client-side includes network; measured server-side does not. | Define as **client-side round trip**, since that is what the user experiences. State it in the events README. | 8 |
+| G2 | ✅ S2 | `logEvent` called during SSR. | Same `typeof window` guard as all storage. Tested as a **no-op** — the log is unchanged by a call with no window — not as "the log reads empty", which is a different and false claim: storage.ts keeps a module-level in-memory copy (C3) that outlives any single window. | 8 |
+| G3 | ✅ S2 | Event cap of 500 drops the oldest — including the `panel_impression` that a later `panel_add` refers to, breaking attribution. | **Accepted**, and now measured rather than assumed: the spec's own full flow produces **10 events**, so eviction needs ~50× a realistic session. Cap holds at 500, drops oldest-first, trims on write and never mid-read. The orphaned add still carries its own `slot`, so slot-level attribution survives the loss of its impression. | 8 |
+| G4 | ✅ S3 | `recommend_call.latencyMs` measured client-side includes network; measured server-side does not. | Defined as the **client-side round trip**, measured across the fetch in `SmartCartPanel` — that is the wait the user experiences, and a server-side figure would exclude exactly the part most likely to vary in production. Stated in the Phase 8 README. | 8 |
 
 ---
 
@@ -158,7 +158,7 @@ All three original items are now resolved. One new one is open.
 ## Summary
 
 Two entries were withdrawn and five added across the build. Current shape after
-Phase 7: **53 closed, 1 withdrawn, 6 open.**
+Phase 8: **54 closed, 1 withdrawn, 5 open** of 60.
 
 - **7 × S1 the spec does not mention** — C1 (hydration), C2 (stale cart ids),
   D1 (cart contents recommended), **D1a (cart *tiles* recommended)**, D2 (undefined
@@ -167,9 +167,12 @@ Phase 7: **53 closed, 1 withdrawn, 6 open.**
 - **Every S1 is now closed.** The two that were open through Phase 5, E1 and E2,
   were closed in Phase 6 and verified: no key in the built client bundle, and no
   purchase claim reachable on a slot-B line.
-- **The remaining open items are Phase 8 (G2, G3, G4) and Phase 9 (H3, H4),
-  plus D7, H2 and E11.** None is an S1, and none is in the recommendation
-  engine or the panel.
+- **The only remaining open items are Phase 9 (H3, H4), plus D7, H2 and E11.**
+  None is an S1. Everything reachable before deploy is closed.
+- **Phase 8's audit found a defect the register had not predicted:** the panel's
+  own row stepper removed a product with no `cart_remove`. Not a listed case —
+  it was a call site that drifted from D22 after the rule was written. The rule
+  now has one implementation (`cartActions.ts`) instead of three.
 - **E11 is the one to watch before a demo.** It is not a code defect — the panel
   degrades correctly — but it is the reason a live walkthrough can show
   `fallback_ratelimit` on the second cart while everything looks fine on the
