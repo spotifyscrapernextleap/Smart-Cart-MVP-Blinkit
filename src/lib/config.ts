@@ -77,3 +77,15 @@ export const EVENT_LOG_CAP = 500;
  */
 export const MIN_CART_QUANTITY = 1;
 export const MAX_CART_QUANTITY = 99;
+
+/**
+ * Most never-bought tiles offered from any single section.
+ *
+ * Never-bought tiles are ordered by how little the persona has bought from
+ * their section, and this persona has zero orders across all seven Beauty &
+ * Personal Care tiles — so without a cap, all four offered tiles come from that
+ * one section and both slot-B rows are near-identical in kind. The cap keeps
+ * every offered tile in a barely-touched section while leaving the model, and
+ * Browse & Replace, a real choice. (EDGE_CASES D6)
+ */
+export const MAX_TILES_PER_SECTION_OFFERED = 2;

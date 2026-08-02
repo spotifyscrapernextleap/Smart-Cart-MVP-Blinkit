@@ -510,3 +510,96 @@ rendered.
   separate call after the click.
 
 ---
+
+## Phase 4 — Recommendation engine, deterministic path
+
+**Completed.** Spec test passes via `curl`; verification suite passes 76/76.
+Detail in [`phases/phase-4-recommend/README.md`](phases/phase-4-recommend/README.md).
+
+Closed edge cases **D1** (cart products excluded), **D1a** (cart tiles excluded),
+**D2** (slot backfill), **D3** (owned durable excluded), **D4** (price ceiling
+applied before the model), **D5** (tile diversity by construction), **D6**
+(never-bought ordering — see D23 below), **D8** (empty cart renders), **D9**
+(shortlist exhaustion falls through to the next tile).
+
+### Decisions
+
+**D23 — Never-bought tiles are ordered by the persona's per-SECTION order count. This resolves D6.**
+
+Spec §4 Step 6 says to sort never-bought tiles by "`bestsellerRank` of their top
+product ascending". Every tile has a rank-1 product, so that key ties all
+seventeen ways and collapses to `tiles.json` array order — which offers
+`oil-ghee-masala`, `dry-fruits-cereals`, `chicken-meat-fish` and
+`kitchenware-appliances`. Three of those are ordinary grocery, and the feature
+exists to surface the categories a user does *not* consider Blinkit for.
+
+The tie now breaks on **how many orders the persona has placed in the tile's
+section**, which is a real signal from real history rather than an invented
+weight. The persona's footprint:
+
+| Section | Orders |
+|---|---|
+| Beauty & Personal Care | **0** |
+| Household Essentials | 5 |
+| Pet Store | 5 |
+| Snacks & Drinks | 42 |
+| Grocery & Kitchen | 97 |
+
+An entire section — seven tiles — is untouched. That is the strongest
+never-bought signal in the data, and it lines up with the idea doc, where beauty
+and personal care is one of the two most-refused categories (11 of 32) and
+therefore exactly the awareness gap the panel targets. The spec's
+`bestsellerRank` rule is preserved as the second sort key; tile id is the third,
+for determinism.
+
+A cap of `MAX_TILES_PER_SECTION_OFFERED` (2) then stops all four offered tiles
+collapsing into that one section. Without it the model would choose both slot-B
+rows from Beauty and the panel would read as monolithic; with it, the offered set
+is `baby-care`, `bath-body`, `electronics`, `home-lifestyle` — every one in a
+section the persona has barely touched, but with a genuine choice available to
+the model and to Browse & Replace.
+
+**D24 — `buildRows()` takes an optional `chooseProduct` callback, so Phase 6 needs no restructuring.**
+The deterministic path passes nothing and gets the top-ranked product plus a
+template reason. The model path will pass a callback returning its pick and its
+reason line per shortlist. Crucially, a pick the callback returns that is **not
+in that shortlist is ignored** and the top-ranked product is used instead — so
+a hallucinated product id degrades to the deterministic answer at the point of
+assembly, before validation is even reached.
+
+**D25 — A malformed request body yields an empty cart, never a 500.**
+The route trusts nothing in the body: unparseable JSON, a missing or `null`
+`cart`, non-string product ids, missing quantities, `null` array elements and
+negative quantities all degrade to an empty or partially-filtered cart. An empty
+cart is a legitimate state — the idea doc explicitly removed the
+minimum-cart-size rule — so there is no input for which returning an error is
+more correct than returning a panel. The client's `signature` is accepted only
+as a label to match the response to a request; the panel itself is always
+computed from the cart contents.
+
+### Gotchas
+
+- **Do not validate never-bought reason lines by banning the word "you".** The
+  spec's own canonical never-bought line is *"Popular with households near you"* —
+  a locality claim, not a history claim. The first draft of the test's detector
+  used `/\byou\b/` and failed all three panels against the correct answer. What
+  must be caught is a claim of **prior purchase** ("you ordered", "your usual",
+  "again", "used to", "restock"). The corrected pattern lives in
+  `phases/phase-4-recommend/verify_recommend.ts` as `CLAIMS_HISTORY`, is
+  self-tested against 9 must-reject and 4 must-accept lines, and **Phase 6's
+  validator should reuse that shape** rather than reinventing it. (EDGE_CASES E2)
+- **The deterministic slot-B pick can be implausible at a low ceiling.** A ₹100
+  ceiling currently surfaces "Peristaltic Nipple — 'S' Hole" from `baby-care`.
+  Every rule holds — never-bought tile, under the ceiling, no false claim — but
+  it is not a sensible suggestion for this persona. This is the exact gap the
+  model layer fills (spec §4 Step 8: choose what "most plausibly belongs
+  alongside" the cart). Not a Phase 4 bug; a Phase 6 success criterion.
+- **`getProductsByTile` is pre-sorted by `bestsellerRank`** in `catalogue.ts`, so
+  shortlists inherit bestseller order for free. Anything that re-sorts a
+  shortlist downstream will silently break the fallback's "top-ranked product"
+  guarantee.
+- **Classification is memoised at module scope.** History never mutates at
+  runtime, so this is safe — but it means a test that wants a different persona
+  cannot simply edit `history.json` between calls in the same process.
+
+---
