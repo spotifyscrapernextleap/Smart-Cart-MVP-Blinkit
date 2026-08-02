@@ -59,7 +59,7 @@
     "id": "kitchenware-appliances",
     "label": "Kitchenware & Appliances",
     "section": "Grocery & Kitchen",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": false,
     "targetCount": 80
   },
@@ -123,7 +123,7 @@
     "id": "bath-body",
     "label": "Bath & Body",
     "section": "Beauty & Personal Care",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": true,
     "targetCount": 80
   },
@@ -131,7 +131,7 @@
     "id": "hair",
     "label": "Hair",
     "section": "Beauty & Personal Care",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": true,
     "targetCount": 70
   },
@@ -139,7 +139,7 @@
     "id": "skin-face",
     "label": "Skin & Face",
     "section": "Beauty & Personal Care",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": true,
     "targetCount": 70
   },
@@ -147,7 +147,7 @@
     "id": "beauty-cosmetics",
     "label": "Beauty & Cosmetics",
     "section": "Beauty & Personal Care",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": true,
     "targetCount": 48
   },
@@ -155,7 +155,7 @@
     "id": "feminine-hygiene",
     "label": "Feminine Hygiene",
     "section": "Beauty & Personal Care",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": true,
     "targetCount": 50
   },
@@ -163,7 +163,7 @@
     "id": "baby-care",
     "label": "Baby Care",
     "section": "Beauty & Personal Care",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": true,
     "targetCount": 70
   },
@@ -171,7 +171,7 @@
     "id": "health-pharma",
     "label": "Health & Pharma",
     "section": "Beauty & Personal Care",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": true,
     "targetCount": 70
   },
@@ -203,7 +203,7 @@
     "id": "electronics",
     "label": "Electronics",
     "section": "Household Essentials",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": false,
     "targetCount": 60
   },
@@ -211,7 +211,7 @@
     "id": "pet-store",
     "label": "Pet Store",
     "section": "Pet Store",
-    "searchable": false,
+    "searchable": true,
     "consumableDefault": true,
     "targetCount": 80
   }

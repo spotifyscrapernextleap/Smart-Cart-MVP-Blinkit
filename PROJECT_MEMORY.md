@@ -209,3 +209,99 @@ and worth knowing before someone reports it as a bug.
   state. Phase 2 replaces it wholesale with Home. Do not build on it.
 
 ---
+
+## Interlude — three product decisions, taken before Phase 2
+
+These were the open items carried out of Phase 0. All three were decided by the
+project owner. **D12 supersedes D5 and materially changes the spec**, so the
+reasoning is recorded in full rather than summarised.
+
+**D12 — Every product is searchable and addable. Supersedes D5.**
+
+The build spec gates search on `isSearchable` and calls it "**the mechanism of
+the demo** — without it the user could find the 'undiscovered' categories by
+searching" (§3.2). Its Phase 2 test states that `pedigree` returning nothing is
+"correct behaviour, not a bug".
+
+**That gate is now removed.** All 27 tiles are `searchable: true`; all 2,236
+products are searchable and addable. A query that matches nothing returns an
+explicit *"Not available here"* state.
+
+Rationale, in the owner's framing: an evaluator will probe the app with many
+different categories, and it has to behave like a real store under that probing.
+An evaluator who searches `shampoo` and gets nothing concludes the app is broken,
+which destroys the demo faster than a weakened premise does.
+
+Worth recording that this is **better aligned with the idea doc than the spec
+was.** Finding H2 is that users "do not actively refuse these categories, they
+simply do not consider Blinkit for them" — a behavioural barrier, not a capability
+one. Blocking search simulated the symptom. Leaving search open and watching the
+panel still do the work demonstrates the actual mechanism: the user *could* have
+found pet food, did not think to, and the cart page surfaced it anyway.
+
+The cost, stated plainly: the panel can no longer claim it is showing something
+otherwise unreachable. It is showing something the user did not think to look for.
+That is a weaker claim, and a truer one.
+
+**D12a — The panel must read the cart. The direct consequence of D12.**
+
+Because Pet Store is now searchable, the obvious evaluator gesture is: search
+`pedigree` → add dog food → open cart. If the panel then offers more Pet Store as
+a dormant *reactivation*, it is nonsense — the category was reactivated thirty
+seconds ago — and it looks like the panel is not reading the cart at all.
+
+Rule: **every tile represented in the cart is excluded from candidate selection**,
+dormant and never-bought alike; the next-ranked tile of that type takes its place.
+Adding dog food should move the dormant slots to `bakery-biscuits` and
+`tea-coffee-milk-drinks`.
+
+This does **not** conflict with the spec's deliberate rejection of "recompute on
+cart change". The panel is still computed once on cart-page mount and cached by
+signature; nothing reshuffles while the user is reading it. Adding dog food changes
+the signature, so the *next* visit computes a fresh panel. Stability within a visit
+is preserved; responsiveness across visits is gained. Tracked as edge case D1a.
+
+**D13 — `bestsellerRank`: 3 random bestsellers per tile.**
+
+Per tile, `BESTSELLER_COUNT` (3) products are drawn with a seeded RNG and take
+ranks 1–3; the rest follow in brand-frequency order from rank 4. The source dump
+has no popularity column, so every ranking here is a fiction — this one at least
+stops the fallback panel leading with the same product on every single run.
+
+Crucially, rank is now assigned **independently of selection order**. Product ids
+still follow selection order, so changing the ranking scheme does not reshuffle
+ids. This was verified: after the change, all 2,236 ids point at the same products,
+`public/images/` needed no regeneration, and every id in `history.json` stayed
+valid. Only 1,736 rank values moved.
+
+Known limitation, accepted when the option was chosen: this does **not** fix the
+tile-ordering tie in edge case D6. Every tile still has a rank-1 product, so
+ordering never-bought *tiles* by their top product's rank still ties 17 ways. A
+tie-break is still required in Phase 4.
+
+**D14 — Slot backfill approved.** The panel always renders 4 rows. If a slot type
+cannot supply 2, backfill from the other type. Every row and every event reports
+the slot the row **actually is**, never the position it sits in — otherwise
+slot-level metrics, which the idea doc names as the feature's main defence against
+its own most likely failure mode, become fiction. Tracked as edge case D2.
+
+### Consequences already absorbed
+
+- `data/tiles.json` — 10 tiles flipped to `searchable: true` (`kitchenware-appliances`,
+  `bath-body`, `hair`, `skin-face`, `beauty-cosmetics`, `feminine-hygiene`,
+  `baby-care`, `health-pharma`, `electronics`, `pet-store`).
+- `data/catalogue.json` — rebuilt. 2,236 products, **1,558 → 2,236 searchable**,
+  recommend-only now 0. Ids unchanged; images untouched.
+- `data/history.json` — re-authored, since repertoire selection reads rank.
+  Verifier still passes 12/12; the owned durable `p_02159` moved from rank 3 to
+  rank 6, still inside the 12-item shortlist, so the exclusion rule stays observable.
+- `EDGE_CASES.md` — B1 withdrawn, B1a and D1a added, B4/B5/D2/D6 rewritten.
+- **The spec's Phase 2 test changes.** `pedigree` and `colgat` now both return
+  results. The typo-tolerance check still holds; the "returns nothing" assertion
+  does not.
+- `isSearchable` survives in the data model as a vestigial field. Spec §3.2
+  requires it, it costs nothing, and keeping it is what makes D12 cheap to revert.
+- **`CategoryGrid` no longer dims anything.** Spec 2.2 dims tiles whose
+  `searchable` is false; none are. Tiles remain inert — no tile is clickable in v1.
+
+---

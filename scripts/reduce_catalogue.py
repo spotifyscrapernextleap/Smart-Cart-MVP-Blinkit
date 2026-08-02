@@ -12,7 +12,7 @@ Pipeline order is fixed by the build spec section 6, Phase 0.1:
   5. sample each tile down to targetCount, preferring rows whose brand appears
      most frequently in the source
   6. assign sequential ids
-  7. assign bestsellerRank 1..n within each tile
+  7. assign bestsellerRank: 3 random bestsellers per tile, then brand order
   8. set isSearchable / isConsumable from tiles.json plus the override list below
 
 Usage:  python scripts/reduce_catalogue.py
@@ -20,6 +20,7 @@ Usage:  python scripts/reduce_catalogue.py
 
 import json
 import os
+import random
 import sys
 
 import pandas as pd
@@ -36,6 +37,14 @@ MAX_PRICE = 5000
 # Roughly how many SKUs each selected brand should contribute to a tile. Drives
 # how wide the per-tile brand set is; see the sampling step for why it matters.
 TARGET_PRODUCTS_PER_BRAND = 3
+
+# Per tile, this many products are chosen at random to hold the top bestseller
+# ranks; everything else keeps brand-frequency order beneath them. The source
+# dump has no popularity column at all, so any ranking is a fiction — this one
+# at least stops the panel leading with the same product on every run.
+# Seeded, so the catalogue is reproducible.
+BESTSELLER_COUNT = 3
+BESTSELLER_SEED = 20260802
 
 # ---------------------------------------------------------------------------
 # sub_category -> tile id
@@ -116,7 +125,7 @@ SUBCATEGORY_TO_TILE = {
     "Spreads, Sauces, Ketchup": "sauces-spreads",
     "Pickles & Chutney": "sauces-spreads",
     "Ice Creams & Desserts": "ice-creams-more",
-    # Beauty & Personal Care  (every tile here is searchable: false)
+    # Beauty & Personal Care
     "Bath & Hand Wash": "bath-body",
     "Fragrances & Deos": "bath-body",
     "Men's Grooming": "bath-body",
@@ -332,11 +341,31 @@ def main():
     out_df = pd.concat(selected, ignore_index=True)
 
     # -- 6/7/8. ids, ranks, flags -------------------------------------------
+    #
+    # bestsellerRank is assigned independently of selection order. Product ids
+    # follow selection order, so keeping the two separate means a change to the
+    # ranking scheme does NOT reshuffle ids -- which would otherwise invalidate
+    # every generated image and every id in history.json.
+    #
+    # Within each tile, BESTSELLER_COUNT products are drawn at random and take
+    # ranks 1..3. The rest follow in brand-frequency order from rank 4. The
+    # fallback panel and the top of each shortlist therefore lead with one of
+    # three plausible products rather than always the same one.
+    rng = random.Random(BESTSELLER_SEED)
+    rank_by_product = {}
+    for tile_id in sorted(set(out_df["tile"])):
+        positions = [
+            i for i, row in enumerate(out_df.itertuples(index=False), start=1)
+            if row.tile == tile_id
+        ]
+        chosen = rng.sample(positions, min(BESTSELLER_COUNT, len(positions)))
+        rest = [p for p in positions if p not in set(chosen)]
+        for rank, position in enumerate(chosen + rest, start=1):
+            rank_by_product[position] = rank
+
     products = []
-    rank_by_tile = {}
     for i, row in enumerate(out_df.itertuples(index=False), start=1):
         tile = tile_by_id[row.tile]
-        rank_by_tile[row.tile] = rank_by_tile.get(row.tile, 0) + 1
 
         name = str(row.product).strip()
         lowered = name.lower()
@@ -361,7 +390,7 @@ def main():
             "imagePath": "/images/p_{:05d}.png".format(i),
             "isSearchable": tile["searchable"],
             "isConsumable": consumable,
-            "bestsellerRank": rank_by_tile[row.tile],
+            "bestsellerRank": rank_by_product[i],
         })
 
     os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)

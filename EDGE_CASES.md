@@ -40,11 +40,12 @@ be missed, because there is no instruction to follow.
 
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
-| B1 | **S1** | ⚠️ **Non-searchable products leaking into results.** If the Fuse index is built over the whole catalogue and `isSearchable` is filtered *after* querying, then `pedigree` returns nothing only by luck — and any relevance-ranked query can surface Pet Store or Beauty. **This single bug destroys the entire premise of the feature**, because the "undiscovered" categories become reachable by search. | Build the Fuse index from `catalogue.filter(p => p.isSearchable)` **at construction**. The index must never contain a non-searchable product. Add an assertion in `search.ts` that the indexed count equals the searchable count (1,558). | 2 |
+| B1 | ~~S1~~ | ~~**Non-searchable products leaking into results.**~~ **Withdrawn — decision D12 makes all 2,236 products searchable and addable, so there is nothing left to leak.** The concern has not vanished, it has moved: the panel must now earn its recommendations against a catalogue the user *could* have reached by searching. See D11 below. | n/a | — |
+| B1a | **S1** | ⚠️ **Zero results now reads as a broken app, not as a design.** With everything searchable, a query returning nothing means we genuinely do not stock it — and an evaluator will try `iphone`, `cigarettes`, `condoms`, `paan`. The old empty state said "correct behaviour"; now it must say "not available". | Explicit **"Not available here"** empty state naming the query, visually distinct from a loading or error state. This is the surface an evaluator hits first when probing coverage, so it has to look deliberate. | 2 |
 | B2 | S2 | ⚠️ **Alias rewriting inside longer words.** A naive `String.replace` turns `dalchini` into `dal pulses lentilchini`, and `andaman` into `eggman`. My alias map contains short keys (`dal`, `tel`, `anda`) that are substrings of real words. | Rewrite on **whole tokens only**, and match multi-word keys (`cold drink`, `kapde dhone`) as phrases before single tokens. Longest key first. Unit-test `dalchini`, `andaman`, `atta noodles`. | 2 |
 | B3 | S2 | Empty or whitespace-only query, or `/search` with no `?q=`. | Render a prompt state, not an empty grid. Never call Fuse with `""`. | 2 |
-| B4 | S2 | Zero results for a valid query (`shampoo`, `phenyl` — both genuinely absent from the searchable set). | Explicit empty state naming the query. This is *correct behaviour* for `pedigree` and must not read as an error. | 2 |
-| B5 | S3 | One- or two-character queries return noise at threshold 0.4 across 1,558 items. | Require ≥2 characters before querying; below that show the prompt state. | 2 |
+| B4 | S2 | ⚠️ **Catalogue coverage is now on display.** Everything is searchable, so search is a direct test of what we stock. `shampoo` and `phenyl` return nothing today even though `hair` (70 products) and `cleaners-repellents` (100) clearly contain the concept — the source names them differently. | Aliases carry this: every gap found while testing becomes an entry in `search-aliases.json`. Budget time in Phase 2 to search the obvious terms per tile and close the misses. | 2 |
+| B5 | S3 | One- or two-character queries return noise at threshold 0.4 across all 2,236 items. | Require ≥2 characters before querying; below that show the prompt state. | 2 |
 | B6 | S3 | Very long or URL-encoded `?q=` value. | React escapes by default. Never use `dangerouslySetInnerHTML`. Clamp displayed query length. | 2 |
 | B7 | S3 | Result cap of 40 hides product 41+. | Accepted — spec'd. Show the count so the cap is legible. | 2 |
 
@@ -71,12 +72,13 @@ code rather than by the model.
 
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
-| D1 | **S1** | ⚠️ **Products already in the cart can be recommended.** The spec never excludes cart contents from shortlists. If the persona's cart holds dog food and `pet-store` is dormant, the panel can recommend the exact product sitting above it. Every slot in this panel is supposed to point *away* from the current basket — this is the idea doc's stated non-goal #3, violated by omission. | Exclude all cart productIds from every shortlist, before the price ceiling. | 4 |
-| D2 | **S1** | ⚠️ **Fewer than 2 tiles of a slot type survive filtering.** Spec says "proceed with what exists and let the fallback fill remaining positions" but never says *what* fills an unfillable A slot. Left undefined, the panel renders 3 rows and the 2+2 guarantee silently breaks. | Explicit rule, decided now: **the panel always renders 4 rows.** If slot type A cannot supply 2, backfill from type B and vice versa. The `slot` field on the row and on every event reports what the row **actually is**, never what position it occupies — otherwise slot-level metrics, the feature's whole defence, become fiction. | 4 |
+| D1 | **S1** | ⚠️ **Products already in the cart can be recommended.** The spec never excludes cart contents from shortlists. If the persona's cart holds dog food and `pet-store` is dormant, the panel can recommend the exact product sitting above it. Every slot in this panel is supposed to point *away* from the current basket — the idea doc's non-goal #3, violated by omission. | Exclude all cart productIds from every shortlist, before the price ceiling. | 4 |
+| D1a | **S1** | ⚠️ **A whole tile the user just shopped is still offered as a "discovery".** Now that every category is searchable, an evaluator will search `pedigree`, add dog food, and open the cart. Recommending *more* Pet Store as a dormant reactivation is nonsense: the category was reactivated thirty seconds ago. This is the failure mode that makes the panel look like it is not reading the cart at all. | **Exclude every tile represented in the cart from candidate selection**, both dormant and never-bought, then take the next-ranked tile of that type. Adding dog food should push the panel to `bakery-biscuits` / `tea-coffee-milk-drinks`. Test explicitly by carting from a dormant tile. | 4 |
+| D2 | **S1** | ⚠️ **Fewer than 2 tiles of a slot type survive filtering.** Spec says "proceed with what exists and let the fallback fill remaining positions" but never says *what* fills an unfillable A slot. Left undefined, the panel renders 3 rows and the 2+2 guarantee silently breaks. **D1a makes this materially more likely** — with only 4 dormant tiles, carting from two of them leaves two, and from three leaves one. | **Approved rule: the panel always renders 4 rows.** If slot type A cannot supply 2, backfill from type B and vice versa. The `slot` field on the row and on every event reports what the row **actually is**, never what position it occupies — otherwise slot-level metrics, the feature's whole defence, become fiction. | 4 |
 | D3 | **S1** | Durable the persona owns appears as a dormant candidate. | Exclude where `ownedProductIds.has(id) && !isConsumable`, before ranking. Observable case is `p_02159` Padded Harness, rank 3 in `pet-store`. | 4 |
 | D4 | **S1** | Never-bought product priced above the ceiling reaches the model. | Filter at shortlist construction, never in the prompt. The model is then structurally incapable of violating it. | 4 |
 | D5 | **S1** | Two rows from the same tile — the diversity constraint. | Shortlists are built one per tile and each tile can contribute one row; enforced by construction, then re-asserted in validation. | 4, 6 |
-| D6 | **S2** | ⚠️ **Never-bought tile selection is degenerate** (PROJECT_MEMORY D7). All 17 tiles tie at `bestsellerRank` 1, so ordering collapses to array order and offers oil, dry fruits, meat and kitchenware — none of the categories the feature exists to surface. | **Needs a decision in Phase 4.** Candidate tie-break: rank never-bought tiles by section distance from the cart's sections, so a grocery cart surfaces Beauty/Pet/Electronics rather than more grocery. Whatever is chosen gets logged. | 4 |
+| D6 | **S2** | ⚠️ **Never-bought tile selection is still degenerate.** Decision D13 assigns 3 random bestsellers per tile, which varies *which product* a tile leads with — but every tile still has a rank-1 product, so ordering **tiles** by their top product's rank still ties 17 ways and collapses to array order. | Still needs a tie-break in Phase 4, and one is no longer optional: array order offers oil, dry fruits, meat and kitchenware, none of which the feature exists to surface. Proposal to confirm at Phase 4: order never-bought tiles by **section distance from the cart's own sections**, which also satisfies the "match the cart intent" requirement in D12. | 4 |
 | D7 | S2 | **Thin shortlists at a small cart.** At the ₹100 floor, `bath-body` has 4 products, `beauty-cosmetics` 5, `chicken-meat-fish` 5, `hair` 7, `skin-face` 7 — well under `SHORTLIST_SIZE` 12. Browse & Replace then opens with 3 alternatives. | Verified no tile is *empty* at ₹100, so the panel always fills. Accept short sheets; if a shortlist has <4 entries, prefer the next tile. | 4, 7 |
 | D8 | S2 | Empty cart on `/cart` — reachable by direct URL. Subtotal 0, signature `""`, ceiling falls to the ₹100 floor. | Spec mandates no minimum cart size, so the panel still renders. Confirm the empty-cart page has a sane layout and the signature is a defined constant, not `undefined`. | 4, 5 |
 | D9 | S3 | Entire top-12 of a dormant tile are owned durables, shrinking the shortlist to nothing. | Covered by the drop-tile-and-take-the-next rule. Not reachable with the current persona. | 4 |
@@ -140,23 +142,28 @@ code rather than by the model.
 
 ## Open decisions
 
-Three items are blocked on a product call rather than on code.
+All three original items are now resolved. One new one is open.
 
-| # | Decision | Recommendation |
+| # | Decision | Status |
 |---|---|---|
-| **D5 (memory)** | `Oral Care` sits in non-searchable `health-pharma`, so the spec's `colgat` search test cannot pass. | Keep the tile table; swap the typo test to a searchable brand. Flipping `health-pharma` to searchable makes oral care reachable by search, which is what the demo exists to prevent. |
-| **D6 (above)** | Never-bought tile ranking is degenerate — all 17 tiles tie. | Tie-break by section distance from the cart, so a grocery cart surfaces Beauty/Pet/Electronics. Decide in Phase 4. |
-| **D2 (above)** | What fills a slot when fewer than 2 tiles of a type survive. | Backfill across types, keep 4 rows, and report the row's true slot in events. Proposed above; flagging it because it trades the 2+2 guarantee for panel completeness. |
+| **D5** | `Oral Care` sits in non-searchable `health-pharma`, so the spec's `colgat` test cannot pass. | **Resolved by D12.** Everything is searchable, so `colgat` returns real results. The question no longer exists. |
+| **D2** | What fills a slot when fewer than 2 tiles of a type survive. | **Approved.** Backfill across types, always 4 rows, report the row's true slot in events. |
+| **D6** | Never-bought tile ranking is degenerate. | **Partly resolved by D13** (3 random bestsellers per tile). The tile-ordering tie remains; the tie-break is a Phase 4 call. Proposal: section distance from the cart. |
+| **NEW** | Should `isSearchable` stay in the data model now that it is `true` for all 2,236 products? | Keep it. The build spec's §3.2 requires the field, it costs nothing, and removing it would be the one change that makes reverting D12 expensive. Treat it as vestigial, not as logic. |
 
 ---
 
 ## Summary
 
-25 of the 47 cases are already closed or structurally prevented by Phase 0 and the
-spec's own design. The ones that need deliberate work:
+Two entries were withdrawn and three added after decisions D12–D14. Current shape:
 
-- **6 × S1 the spec does not mention** — B1 (search index leak), C2 (stale cart ids),
-  D1 (cart contents recommended), D2 (undefined slot backfill), E2 (false history
-  claim on never-bought rows), plus C1 (hydration).
-- **The single highest-risk item is B1.** Every other bug here degrades the demo.
-  B1 disproves its premise.
+- **6 × S1 the spec does not mention** — C1 (hydration), C2 (stale cart ids),
+  D1 (cart contents recommended), **D1a (cart *tiles* recommended)**, D2 (undefined
+  slot backfill), E2 (false history claim on never-bought rows).
+- **The highest-risk item is now D1a.** B1 held that title while search was gated;
+  with the gate gone, the way this demo fails in front of an evaluator is somebody
+  searching `pedigree`, adding dog food, opening the cart, and being recommended
+  more Pet Store. That single screenshot says the panel does not read the cart.
+- **Phase 2 carries new weight.** Search is no longer a narrow path to a curated
+  set — it is the surface an evaluator uses to probe the whole catalogue, and
+  coverage gaps (B4) now show up as missing products rather than as design.
