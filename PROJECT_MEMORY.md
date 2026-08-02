@@ -305,3 +305,95 @@ its own most likely failure mode, become fiction. Tracked as edge case D2.
   `searchable` is false; none are. Tiles remain inert — no tile is clickable in v1.
 
 ---
+
+## Phase 2 — Catalogue and search
+
+**Completed.** Spec test passes in-browser; verification suite passes 37/37.
+Detail in [`phases/phase-2-catalogue-search/README.md`](phases/phase-2-catalogue-search/README.md).
+
+Closed edge cases **A2** (missing image), **A3** (duplicate names), **A4** (long
+names), **B1a** (not-available state), **B2** (alias word boundaries), **B3**
+(empty query), **B4** (coverage), **B5** (min length), **B6** (long query), **B7**
+(result cap), **H1** (no `next/image`).
+
+### Decisions
+
+**D15 — Alias values must be a single word. This is a hard constraint, not a style preference.**
+Fuse matches the query as **one fuzzy pattern**, so an alias that expands a word
+into a phrase produces a string resembling no product name. `dal` →
+`"dal pulses lentil"` returned **zero** results; so did `maida`, `namkeen` and
+`matchbox`. Measured across the whole map: single-word values returned 25–40
+results, multi-word values 0–4.
+
+All 35 aliases are now single-word, and `verify_search.ts` asserts it so the
+constraint cannot be violated silently later. Several aliases were **deleted**
+rather than rewritten, because the native term already worked better — unaliased
+`atta` leads with "Khapli Atta" instead of generic flour, and `poha`, `besan`,
+`namkeen`, `biscuit`, `dal` behave the same way.
+
+Two entries were also removed as dishonest: `sanitizer` and `lipstick` are not in
+the catalogue at all, so "Not available here" is the correct answer and an alias
+pointing them elsewhere would have been a lie dressed as coverage.
+
+**D16 — Search relevance needs an ABSOLUTE cutoff, not a relative one.**
+`SEARCH_THRESHOLD` (0.4) bounds each per-key match, but Fuse's weighted total can
+exceed it, so the result list ran to 40 rows of noise: `maggi` matched 146
+products of which three were MAGGI.
+
+The first fix was a band relative to the best hit. It fixed `maggi` and did
+nothing for `iphone`, which still returned 40 rows of honey and hair conditioner
+— **when every match is bad, the best match is bad too, and the entire tail sits
+inside the band.** A relative cutoff structurally cannot reject a query the
+catalogue has no answer for.
+
+`SEARCH_MAX_SCORE = 0.35` is absolute, and sits in a wide empty gap in the
+measured distribution:
+
+| | best score |
+|---|---|
+| Answerable (`maggi`, `pedigree`, `milk`, `dog food`) | 0.00 – 0.21 |
+| Unanswerable (`petrol`, `iphone`, `mattress`, `furniture`) | 0.52 – 0.79 |
+
+The counterweight is in the suite too: `condoms` (0.05) and `beer` (0.18) are
+genuinely stocked and must keep returning results. New constant, so it lives in
+`config.ts` under the "Beyond build spec §7.4" section per D10.
+
+**D17 — `events.ts` ships in Phase 2, not Phase 8.**
+Spec 2.5 requires logging `search`, which requires `logEvent`. §3.6 is explicit
+that retrofitting event calls into finished components is the expensive part.
+Phase 8 now adds the remaining call sites and verifies the full set rather than
+building the module from scratch.
+
+**D18 — Lib modules use explicit `.ts` extensions on value imports.**
+Node resolves ESM by exact path and does not read `tsconfig` `paths`. Extensions
+on the six relative value imports inside `src/lib` — plus
+`allowImportingTsExtensions` and `with { type: "json" }` on the seed imports —
+let `node phases/*/verify_*.ts` run against **real source** with no test runner
+and no build step. Both Turbopack and `tsc` accept it. Type-only imports are
+erased before Node sees them and need no extension.
+
+### Gotchas
+
+- **The catalogue had mojibake in 15 names** — `DentastixÂ Dog Treat`. The source
+  was written UTF-8 and read back as a single-byte codec, so a non-breaking space
+  arrives as the two characters `Â\xa0`; removing the invisible half leaves the
+  visible half on screen *and burnt into the generated product image*. Repair
+  reverses the round-trip, tries **cp1252 before latin-1** (`â€“` only reverses
+  under cp1252, whose 0x80–0x9F block holds the dashes latin-1 leaves undefined),
+  and loops up to `MAX_MOJIBAKE_PASSES` because a few rows were damaged twice.
+  Images were regenerated with `--force`; ids did not move.
+- **Implicit form submission needs a submit control.** The search input alone did
+  not submit on Enter under automation. A visually hidden `type="submit"` button
+  now guarantees it for hardware Enter and the mobile keyboard's search key.
+- **Verify events after a full page load, not immediately after navigation.** The
+  `search` event is written in an effect, so reading `sc_events` too quickly shows
+  an empty log and looks like a logging bug. Confirmed exactly **one** event per
+  search — no React StrictMode double-fire (relevant to edge case G1).
+- **`getSections()` order comes from `tiles.json`**, not from code. Reordering
+  sections on Home means reordering that file.
+- **Browser-pane screenshots were unavailable** this session (the pane was not
+  displayed, so nothing composites). Layout was verified numerically instead —
+  shell width, grid column count, `document.body.scrollWidth` — plus
+  `get_page_text` for content. Worth a visual pass before deploy.
+
+---

@@ -43,5 +43,29 @@ export const SEARCH_THRESHOLD = 0.4;
 
 export const SEARCH_MAX_RESULTS = 40;
 
+// ---------------------------------------------------------------------------
+// Beyond build spec §7.4.
+//
+// Tunables the spec did not anticipate. They live here rather than inline
+// because this file's contract is that it holds every tunable — see
+// PROJECT_MEMORY decision D10.
+// ---------------------------------------------------------------------------
+
+/**
+ * Worst Fuse score still shown. 0 is a perfect match, 1 is unrelated.
+ *
+ * `SEARCH_THRESHOLD` bounds each per-key match, but Fuse's weighted total can
+ * exceed it, so without this `maggi` returned three real MAGGI products (0.00)
+ * followed by 37 rows ending in "Liner Magique Eyeliner" (0.67), and `iphone`
+ * returned 40 rows of honey and hair conditioner.
+ *
+ * 0.35 sits in a wide empty gap in the measured distribution: queries the
+ * catalogue can answer score 0.00–0.21 (`maggi` 0.00, `dog food` 0.21), and
+ * queries it cannot score 0.52–0.79 (`petrol` 0.52, `furniture` 0.79). Products
+ * that genuinely exist stay on the right side of it — `condoms` scores 0.05 and
+ * `beer` 0.18, and both are in the catalogue.
+ */
+export const SEARCH_MAX_SCORE = 0.35;
+
 /** Events kept in localStorage before the oldest are dropped. */
 export const EVENT_LOG_CAP = 500;

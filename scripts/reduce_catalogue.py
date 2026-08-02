@@ -46,6 +46,10 @@ TARGET_PRODUCTS_PER_BRAND = 3
 BESTSELLER_COUNT = 3
 BESTSELLER_SEED = 20260802
 
+# Some source rows were encoding-damaged more than once; the repair re-runs
+# until it stops changing the string.
+MAX_MOJIBAKE_PASSES = 3
+
 # ---------------------------------------------------------------------------
 # sub_category -> tile id
 #
@@ -208,6 +212,49 @@ def log(msg=""):
     print(msg, flush=True)
 
 
+# Whitespace-ish and unrenderable codepoints that must not reach the UI or get
+# burnt into a generated product image.
+_JUNK = dict.fromkeys(
+    [0xFFFD, 0x00A0, 0x200B, 0x200C, 0x200D, 0xFEFF] + list(range(0x80, 0xA0)),
+    " ",
+)
+
+
+def clean_text(value):
+    """
+    Repair mojibake, strip encoding junk, collapse whitespace.
+
+    The source was written as UTF-8 and read back as a single-byte codec, so a
+    non-breaking space arrives as the two characters "Â\xa0" and an en dash as
+    "â€“". Removing the invisible half alone leaves the visible half behind —
+    that is how "Dentastix Dog Treat" became "DentastixÂ Dog Treat" on screen.
+
+    Both codecs are tried because the damage is not uniform: "Â\xa0" reverses
+    under latin-1, but "â€“" only reverses under cp1252, whose 0x80-0x9F block
+    holds the curly quotes and dashes that latin-1 leaves undefined. cp1252 goes
+    first because it is the stricter reading.
+
+    Abandoned silently when the text is already correct, which is the case for
+    the ~2,220 rows that were never damaged.
+
+    A few rows were damaged twice ("Olive OilÂÂ\xa0- Pure"), so the repair loops
+    until it stops changing anything rather than running once.
+    """
+    text = str(value)
+    for _ in range(MAX_MOJIBAKE_PASSES):
+        for codec in ("cp1252", "latin-1"):
+            try:
+                repaired = text.encode(codec).decode("utf-8")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                continue
+            if repaired != text:
+                text = repaired
+                break
+        else:
+            break
+    return " ".join(text.translate(_JUNK).split())
+
+
 def main():
     if not os.path.exists(SOURCE_XLSX):
         sys.exit("ERROR: missing {}".format(SOURCE_XLSX))
@@ -225,11 +272,15 @@ def main():
     df = df.dropna(subset=["product", "brand"])
     log("  after dropping null product/brand: {}  (-{})".format(len(df), before - len(df)))
 
-    # Trim before deduping and before counting brands. The source has trailing
-    # spaces on some brand values ("MAGGI ", "Haldirams "), which would otherwise
-    # split one brand into two and halve its apparent frequency.
-    df["product"] = df["product"].astype(str).str.strip()
-    df["brand"] = df["brand"].astype(str).str.strip()
+    # Clean before deduping and before counting brands.
+    #
+    # Trailing spaces on some brand values ("MAGGI ", "Haldirams ") would split
+    # one brand into two and halve its apparent frequency. Separately, 15 rows
+    # carry mojibake from the source's encoding -- U+FFFD replacement characters
+    # and non-breaking spaces, which render as "Dentastix DogÂ Treat" both in the
+    # UI and burnt into the generated product image.
+    df["product"] = df["product"].astype(str).map(clean_text)
+    df["brand"] = df["brand"].astype(str).map(clean_text)
 
     # -- 2. duplicates on (product, brand) ---------------------------------
     before = len(df)
@@ -367,7 +418,7 @@ def main():
     for i, row in enumerate(out_df.itertuples(index=False), start=1):
         tile = tile_by_id[row.tile]
 
-        name = str(row.product).strip()
+        name = clean_text(row.product)
         lowered = name.lower()
         consumable = tile["consumableDefault"]
         for kw in NON_CONSUMABLE_KEYWORDS.get(row.tile, []):
@@ -383,7 +434,7 @@ def main():
         products.append({
             "id": "p_{:05d}".format(i),
             "name": name,
-            "brand": str(row.brand).strip(),
+            "brand": clean_text(row.brand),
             "tile": row.tile,
             "price": int(round(float(row.sale_price))),
             "mrp": int(round(float(row.market_price))),

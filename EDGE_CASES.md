@@ -16,7 +16,7 @@ when something was run that would have failed before the fix.
 | **S2** | Visible defect an evaluator would notice. Fix before deploy. |
 | **S3** | Cosmetic, or only reachable by deliberate abuse. Fix if cheap. |
 
-**Status:** `open` · `mitigated` (handled in code) · `accepted` (known, deliberately not fixed) · `needs-decision` (blocked on a product call)
+**Status:** ✅ = closed and verified by a phase test · `open` · `mitigated` (handled in code) · `accepted` (known, deliberately not fixed) · `needs-decision` (blocked on a product call)
 
 ⚠️ marks a case the build spec does not cover. Those are the ones most likely to
 be missed, because there is no instruction to follow.
@@ -28,9 +28,9 @@ be missed, because there is no instruction to follow.
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
 | A1 | S1 | **Product ids are positional.** Rebuilding the catalogue reshuffles `p_00001`..`p_02236`, silently invalidating all 2,236 images and every id in `history.json`. Already hit twice in Phase 0. | Fixed rebuild order documented in PROJECT_MEMORY: `reduce_catalogue.py` → delete `public/images/` → `generate_images.py` → `author_history.py` → `verify_history.js`. `verify_history.js` fails loudly on unknown ids. | 0 ✅ |
-| A2 | S2 | A product's PNG is missing → broken image icon in search, cart and panel. | `onError` handler on every product image swapping to a neutral tile-coloured placeholder. Never render a raw broken `<img>`. | 2 |
-| A3 | S2 | ⚠️ **Duplicate product names across brands.** Dedup was on `(product, brand)`, so "Almonds" can exist three times under three brands. In the cart and the panel these read as identical rows. | Always render brand alongside name in cart lines and panel rows. Keys are ids, never names. | 3, 5 |
-| A4 | S2 | **122-character product names.** Longest in the catalogue. Overflows row layouts, wraps cart lines to four lines, pushes prices off-screen at 480px. | Two-line clamp with ellipsis on panel rows and cart lines; full name only on the search card. Test with `p_01774`-class names specifically. | 2, 3, 5 |
+| A2 | ✅ S2 | A product's PNG is missing → broken image icon in search, cart and panel. | `onError` handler on every product image swapping to a neutral tile-coloured placeholder. Never render a raw broken `<img>`. | 2 |
+| A3 | ✅ S2 | ⚠️ **Duplicate product names across brands.** Dedup was on `(product, brand)`, so "Almonds" can exist three times under three brands. In the cart and the panel these read as identical rows. | Always render brand alongside name in cart lines and panel rows. Keys are ids, never names. | 3, 5 |
+| A4 | ✅ S2 | **122-character product names.** Longest in the catalogue. Overflows row layouts, wraps cart lines to four lines, pushes prices off-screen at 480px. | Two-line clamp with ellipsis on panel rows and cart lines; full name only on the search card. Test with `p_01774`-class names specifically. | 2, 3, 5 |
 | A5 | S3 | Non-ASCII in names (`é`, `₹`, `&`) breaking JSON, image text or Fuse matching. | Files written UTF-8 and read UTF-8; Pillow falls back per-glyph. Verified in Phase 0 — no mojibake in generated tiles. | 0 ✅ |
 | A6 | S3 | `history.json` edited so an order is older than `accountAgeDays`, making the persona incoherent. | `verify_history.js` asserts the span; re-run after any edit. | 0 ✅ |
 
@@ -41,13 +41,13 @@ be missed, because there is no instruction to follow.
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
 | B1 | ~~S1~~ | ~~**Non-searchable products leaking into results.**~~ **Withdrawn — decision D12 makes all 2,236 products searchable and addable, so there is nothing left to leak.** The concern has not vanished, it has moved: the panel must now earn its recommendations against a catalogue the user *could* have reached by searching. See D11 below. | n/a | — |
-| B1a | **S1** | ⚠️ **Zero results now reads as a broken app, not as a design.** With everything searchable, a query returning nothing means we genuinely do not stock it — and an evaluator will try `iphone`, `cigarettes`, `condoms`, `paan`. The old empty state said "correct behaviour"; now it must say "not available". | Explicit **"Not available here"** empty state naming the query, visually distinct from a loading or error state. This is the surface an evaluator hits first when probing coverage, so it has to look deliberate. | 2 |
-| B2 | S2 | ⚠️ **Alias rewriting inside longer words.** A naive `String.replace` turns `dalchini` into `dal pulses lentilchini`, and `andaman` into `eggman`. My alias map contains short keys (`dal`, `tel`, `anda`) that are substrings of real words. | Rewrite on **whole tokens only**, and match multi-word keys (`cold drink`, `kapde dhone`) as phrases before single tokens. Longest key first. Unit-test `dalchini`, `andaman`, `atta noodles`. | 2 |
-| B3 | S2 | Empty or whitespace-only query, or `/search` with no `?q=`. | Render a prompt state, not an empty grid. Never call Fuse with `""`. | 2 |
-| B4 | S2 | ⚠️ **Catalogue coverage is now on display.** Everything is searchable, so search is a direct test of what we stock. `shampoo` and `phenyl` return nothing today even though `hair` (70 products) and `cleaners-repellents` (100) clearly contain the concept — the source names them differently. | Aliases carry this: every gap found while testing becomes an entry in `search-aliases.json`. Budget time in Phase 2 to search the obvious terms per tile and close the misses. | 2 |
-| B5 | S3 | One- or two-character queries return noise at threshold 0.4 across all 2,236 items. | Require ≥2 characters before querying; below that show the prompt state. | 2 |
-| B6 | S3 | Very long or URL-encoded `?q=` value. | React escapes by default. Never use `dangerouslySetInnerHTML`. Clamp displayed query length. | 2 |
-| B7 | S3 | Result cap of 40 hides product 41+. | Accepted — spec'd. Show the count so the cap is legible. | 2 |
+| B1a | ✅ **S1** | ⚠️ **Zero results now reads as a broken app, not as a design.** With everything searchable, a query returning nothing means we genuinely do not stock it — and an evaluator will try `iphone`, `cigarettes`, `condoms`, `paan`. The old empty state said "correct behaviour"; now it must say "not available". | Explicit **"Not available here"** empty state naming the query, visually distinct from a loading or error state. This is the surface an evaluator hits first when probing coverage, so it has to look deliberate. | 2 |
+| B2 | ✅ S2 | ⚠️ **Alias rewriting inside longer words.** A naive `String.replace` turns `dalchini` into `dal pulses lentilchini`, and `andaman` into `eggman`. My alias map contains short keys (`dal`, `tel`, `anda`) that are substrings of real words. | Rewrite on **whole tokens only**, and match multi-word keys (`cold drink`, `kapde dhone`) as phrases before single tokens. Longest key first. Unit-test `dalchini`, `andaman`, `atta noodles`. | 2 |
+| B3 | ✅ S2 | Empty or whitespace-only query, or `/search` with no `?q=`. | Render a prompt state, not an empty grid. Never call Fuse with `""`. | 2 |
+| B4 | ✅ S2 | ⚠️ **Catalogue coverage is now on display.** Everything is searchable, so search is a direct test of what we stock. `shampoo` and `phenyl` return nothing today even though `hair` (70 products) and `cleaners-repellents` (100) clearly contain the concept — the source names them differently. | Aliases carry this: every gap found while testing becomes an entry in `search-aliases.json`. Budget time in Phase 2 to search the obvious terms per tile and close the misses. | 2 |
+| B5 | ✅ S3 | One- or two-character queries return noise at threshold 0.4 across all 2,236 items. | Require ≥2 characters before querying; below that show the prompt state. | 2 |
+| B6 | ✅ S3 | Very long or URL-encoded `?q=` value. | React escapes by default. Never use `dangerouslySetInnerHTML`. Clamp displayed query length. | 2 |
+| B7 | ✅ S3 | Result cap of 40 hides product 41+. | Accepted — spec'd. Show the count so the cap is legible. | 2 |
 
 ---
 
@@ -55,12 +55,12 @@ be missed, because there is no instruction to follow.
 
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
-| C1 | **S1** | **Hydration mismatch.** Reading `localStorage` during render makes the server produce an empty cart and the client a full one. React throws a hydration error and the page can blank. | All storage reads happen in `useEffect`, never during render. First paint is always the empty/skeleton state. | 1 |
+| C1 | ✅ **S1** | **Hydration mismatch.** Reading `localStorage` during render makes the server produce an empty cart and the client a full one. React throws a hydration error and the page can blank. | All storage reads happen in `useEffect`, never during render. First paint is always the empty/skeleton state. | 1 |
 | C2 | **S1** | ⚠️ **Cart holds a productId that no longer exists** — stale `localStorage` from before a catalogue rebuild, which given A1 is near-certain during development. `getProduct(id)` returns `undefined` and the cart page crashes on `.price`. | `readCart()` filters out ids absent from the catalogue and rewrites storage. Never trust persisted ids. Same guard on the panel cache. | 3 |
-| C3 | S2 | `localStorage` unavailable — Safari private mode, disabled cookies, quota exceeded. | `storage.ts` wraps every access in try/catch and degrades to in-memory. The app must run, losing only persistence. | 1 |
-| C4 | S2 | Corrupt JSON in any `sc_*` key. | Typed wrapper catches parse errors, clears that key, returns the default. | 1 |
+| C3 | ✅ S2 | `localStorage` unavailable — Safari private mode, disabled cookies, quota exceeded. | `storage.ts` wraps every access in try/catch and degrades to in-memory. The app must run, losing only persistence. | 1 |
+| C4 | ✅ S2 | Corrupt JSON in any `sc_*` key. | Typed wrapper catches parse errors, clears that key, returns the default. | 1 |
 | C5 | S2 | Negative, zero, fractional or absurd quantities via direct storage editing. | Clamp to integer 1..99 on read and write. Quantity 0 removes the line. | 3 |
-| C6 | S3 | `?reset=1` clearing keys but leaving the param in history, so a back-navigation re-clears. | `history.replaceState` to strip the param after clearing. | 1 |
+| C6 | ✅ S3 | `?reset=1` clearing keys but leaving the param in history, so a back-navigation re-clears. | `history.replaceState` to strip the param after clearing. | 1 |
 | C7 | S3 | Panel cache grows unbounded — one entry per distinct cart signature. | Cap `sc_panel_cache` at the most recent ~20 signatures. | 5 |
 
 ---
@@ -131,7 +131,7 @@ code rather than by the model.
 
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
-| H1 | **S1** | ⚠️ **`next/image` optimisation across 2,236 PNGs.** Vercel's free tier meters optimised source images; an evaluator browsing the catalogue could exhaust the quota and start serving errors mid-demo. 18.8 MB across 2,236 files. | Serve these as plain `<img>`, or set `unoptimized`. They are already flat 400×400 tiles — there is nothing for the optimiser to win. | 2, 9 |
+| H1 | ✅ **S1** | ⚠️ **`next/image` optimisation across 2,236 PNGs.** Vercel's free tier meters optimised source images; an evaluator browsing the catalogue could exhaust the quota and start serving errors mid-demo. 18.8 MB across 2,236 files. | Serve these as plain `<img>`, or set `unoptimized`. They are already flat 400×400 tiles — there is nothing for the optimiser to win. | 2, 9 |
 | H2 | S2 | Serverless function bundle size from static imports. `catalogue.json` is 0.62 MB, well under the 50 MB limit — but only because it is the *only* large static import in the route. | Confirmed safe. Do not import images or add further large static data into the route. | 4, 9 |
 | H3 | S2 | Works locally with `source: "model"`, falls back in production — wrong region, missing Vercel env var, or a latency budget that only fits on a local network. | This is exactly what the spec's Phase 9 test exists to catch. Check `recommend_call.outcome` on the deployed URL, not just that the panel renders. | 9 |
 | H4 | S2 | `.env.local` committed. | Gitignored and verified in Phase 0. Re-check `git log --all -- .env.local` before pushing. | 9 |

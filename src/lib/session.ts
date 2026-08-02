@@ -5,7 +5,7 @@
  * ties a run of events together for later analysis.
  */
 
-import { STORAGE_KEYS, clearAll, getItem, isSession, setItem } from "./storage";
+import { STORAGE_KEYS, clearAll, getItem, isSession, setItem } from "./storage.ts";
 import type { Session } from "./types";
 
 /** Query parameter that wipes all app state on load. Spec §3.5. */
