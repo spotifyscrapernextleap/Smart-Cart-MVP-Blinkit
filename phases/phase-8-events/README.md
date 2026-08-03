@@ -82,7 +82,7 @@ on the panel's own stepper inside the exit window now produces
 `panel_add → cart_add → cart_remove`, and the product leaves the cart. Before
 this phase the third event did not exist.
 
-### Verification suite — 43/43
+### Verification suite — 45/45
 
 | Group | Checks |
 |---|---|
@@ -90,8 +90,15 @@ this phase the third event did not exist.
 | The envelope every event shares | 6 |
 | The cap, and what it costs (G3) | 4 |
 | Logging never breaks the interaction (G2, C3, C4) | 5 |
-| When cart events fire, at every surface (D22) | 12 |
+| When cart events fire, at every surface (D22) | 14 |
 | A full session reads as the story it was | 6 |
+
+Two of those were added after the phase closed: browsable categories (D37) gave
+`cart_add.source` a third value, `"category"`, beyond the spec's
+`search | panel`. Attributing a browse as a search would inflate search's
+conversions, which is the error D22 exists to prevent — so the suite asserts the
+third channel is distinguishable, and that every `BROWSABLE_TILES` entry is a
+real tile with products.
 
 ## Edge cases closed
 

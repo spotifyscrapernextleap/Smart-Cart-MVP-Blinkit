@@ -4,6 +4,14 @@
 **Build spec reference:** §6 Phase 7 (7.1–7.2), §4 Step 13
 **Edge cases closed:** F5, F6 — see [`../../EDGE_CASES.md`](../../EDGE_CASES.md)
 
+> **Superseded numbers.** Two owner-requested UI changes after Phase 8 moved the
+> figures recorded here: the row is now `h-[106px]` (not 92px) and the panel
+> measures **477.33px** (not 421.33px), because the reason line wraps to two
+> lines; and the panel is now full-bleed inside the cart card with no dashed
+> border. F1 still measures 0px shift. See **D37/D38** in
+> [`../../PROJECT_MEMORY.md`](../../PROJECT_MEMORY.md). Everything else below
+> stands.
+
 The panel becomes negotiable. Each row gains a control that opens the rest of
 that row's shortlist, and picking one swaps it in place — same slot, same
 position, no network call, because the response has carried the full ranked

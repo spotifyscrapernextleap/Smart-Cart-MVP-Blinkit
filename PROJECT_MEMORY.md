@@ -24,14 +24,16 @@ conversation.** Read this file top to bottom before touching anything.
 | 8 — Events | ✅ committed | 45/45 events |
 | **9 — Deploy** | **next** | needs GitHub + Vercel |
 
-**354 checks pass across eight suites. `tsc`, `eslint --max-warnings 0` and
-`next build` are all clean.**
+**354 checks pass across the eight phase suites** (Phases 1–8), **plus 12 in the
+Phase 0 data verifier** — 366 in total, if you count the way the commands
+section runs them. `tsc`, `eslint --max-warnings 0` and `next build` are all
+clean.
 
-**The whole feature is now built.** Search → add to cart → checkout → a four-row
-Smart Cart panel whose products and reason lines are chosen by GPT-OSS 120B,
-each row swappable from its own shortlist with no second network call,
-degrading to the deterministic panel on any model failure. Measured round trip
-1.3–2.0s against a 4s abort.
+**The whole feature is now built.** Search *or* browse a category → add to cart
+→ checkout → a four-row Smart Cart panel whose products and reason lines are
+chosen by GPT-OSS 120B, each row swappable from its own shortlist with no second
+network call, degrading to the deterministic panel on any model failure.
+Measured round trip 1.3–2.0s against a 4s abort.
 
 ### The immediate next action
 
@@ -43,10 +45,14 @@ The one test that matters: on the deployed URL, `recommend_call.outcome` must
 read `model`, not a fallback. `fallback_nokey` there means the env var was not
 set in Vercel; `fallback_timeout` means the region is too far for the 4s budget.
 
+The build now emits **nine additional static pages** — one per `BROWSABLE_TILES`
+entry (D37) — all prerendered, so they add HTML but no request-time work.
+
 **Two things to do before pushing**, both already noted below: re-check
 `git log --all -- .env.local` returns nothing (H4), and be aware that the UI has
 still never been reviewed on a real screen at more than one viewport — the
-browser pane has never composited in any session.
+browser pane has never composited in any session, so every layout claim in this
+file is a measured `getBoundingClientRect`, not something anyone looked at.
 
 ---
 
@@ -1135,6 +1141,11 @@ The cost is 16px per row — `PANEL_ROW_HEIGHT_CLASS` went from `h-[76px]` to
 `h-[92px]`. Because the skeleton reads that same constant, F1 did not regress:
 measured **421.33px in both states, 0px shift**. That constant existing is the
 only reason this was a one-line change.
+
+> ⚠️ **Both numbers moved again after Phase 8.** The row is now `h-[106px]` and
+> the panel measures 477.33px, because the reason line wraps to two lines — see
+> the interlude below. F1 still measures 0px shift. The figures above are the
+> Phase 7 record, not the current state.
 
 **D35 — `panel_replace_done.originalProductId` is the product that was on the row, not the panel's first.**
 
