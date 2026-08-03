@@ -70,8 +70,8 @@ open, and every S1 is closed.** Each phase README states which it closed.
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
-- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D37 exist;
-  the next new decision is D38.**
+- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D38 exist;
+  the next new decision is D39.**
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
 - Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
@@ -936,6 +936,11 @@ dominant barrier", and recommends keeping the tinted background while removing
 row borders. The panel's dashed *outer* border is retained as the prototype's
 signature; the internal dashes are not.
 
+> ⚠️ **The outer dashed border and the red ✗ are both gone — see D38.** The
+> panel is now full-bleed inside the cart card with a single hairline on top,
+> and the control is the word "Hide". The idea doc's warning above is the reason
+> that change was an improvement rather than a loss.
+
 ### Decisions
 
 **D30 — A StrictMode fetch guard and an in-flight cancellation flag cannot coexist.**
@@ -1227,10 +1232,10 @@ place someone would otherwise add one.
 
 ---
 
-## Interlude — browsable categories and a wider reason line
+## Interlude — three UI changes taken after Phase 8
 
-Two owner-requested changes taken after Phase 8, before deploy. Both are visible
-in the UI and neither is in the build spec.
+Owner-requested changes taken after Phase 8, before deploy, all from looking at
+the app on a real screen. None is in the build spec.
 
 **D37 — Nine home-screen tiles open a category listing. The spec defers browse navigation entirely.**
 
@@ -1272,6 +1277,34 @@ Two consequences worth knowing:
   scenery rather than a disabled control. **If all 27 should be browsable, it is
   a one-line change to `BROWSABLE_TILES`** — the route and the grid already
   handle any tile.
+
+**D38 — The panel is part of the cart card, and the dismiss control is the word "Hide".**
+
+Both owner-requested, after seeing it on a real screen. They supersede two
+Phase 5 choices.
+
+*One block.* The panel carried `mx-3 my-2`, its own rounded corners and the
+prototype's dashed violet border, so it read as a separate card floating **over**
+the cart rather than continuing it. That works against the panel's own argument,
+which is that these are things to consider alongside what is already in the
+basket. It is now full-bleed inside the cart card — no horizontal inset, no
+outer border, only the bottom corners rounded because it is the card's last
+child, and a single hairline on top doing the separation the dashed border was
+doing. Measured: same width and left edge as the card, **0px gap above and
+below**. The tint stays, so rows still read as provisional rather than bought.
+
+Losing the dashed border is a gain, not a compromise: the idea doc's design note
+warns dashed borders "carry heavy coupon and promo connotation in Indian
+commerce UI, and an ad-styled block is the visual language users have trained
+themselves to skip — a real risk when trust is the dominant barrier".
+
+*"Hide", not a red ✗.* A red circular cross is the visual language of **delete**,
+sitting one row above four ADD buttons on a panel whose job is to earn a little
+trust. What the control does is collapse the section, and a word says so where
+an icon could only imply it. It toggles to "Show". The header stays behind it,
+per idea doc §7 — this minimises rather than destroys. Measured: 477px → 51px
+and back, with exactly **one** `panel_dismiss` logged across both taps, since
+re-expanding is not a dismissal.
 
 **The panel reason line wraps to two lines.**
 

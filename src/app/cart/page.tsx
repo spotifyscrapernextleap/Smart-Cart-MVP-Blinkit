@@ -100,7 +100,13 @@ export default function CartPage() {
       <CartHeader />
       <DeliveryCard itemCount={itemCount} />
 
-      <div className="mx-3 mt-3 rounded-xl bg-[var(--color-surface)] py-1">
+      {/*
+        One block. The cart lines and the Smart Cart panel share a single card,
+        with no padding between them — the panel is the continuation of the
+        basket, not a second surface laid over it. The panel supplies its own
+        bottom corners, so the card needs no vertical padding of its own.
+      */}
+      <div className="mx-3 mt-3 rounded-xl bg-[var(--color-surface)]">
         <ul className="flex flex-col gap-4 px-3 py-3">
           {lines.map((line) => (
             <CartLine key={line.productId} productId={line.productId} quantity={line.quantity} />

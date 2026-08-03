@@ -71,27 +71,27 @@ function PanelHeader({
       </div>
 
       {/*
-        Dismiss only. The prototype pairs this with a green bulk-add tick, but
-        the idea doc §7 recommends cutting it for v1 — highest-regret action on
-        the screen, no undo, and it makes per-slot attribution meaningless.
+        A plain "Hide" in the app's own type, not a red ✗.
+
+        A red circular cross is the visual language of *delete*, and it sat one
+        row above four ADD buttons on a panel whose job is to earn a little
+        trust. What the control actually does is collapse the section, and a
+        word says so where an icon could only imply it. The header stays behind
+        it — idea doc §7 requires an affordance to bring the suggestions back,
+        so this minimises rather than destroys.
+
+        Still dismiss-only: the prototype pairs the cross with a green bulk-add
+        tick, cut for v1 per idea doc §7 (highest-regret action on the screen,
+        no undo, and it makes per-slot attribution meaningless).
       */}
       <button
         type="button"
         onClick={onToggle}
-        aria-label={dismissed ? "Show Smart Cart suggestions" : "Dismiss Smart Cart suggestions"}
         aria-expanded={!dismissed}
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white"
-        style={{ backgroundColor: dismissed ? "var(--color-ink-faint)" : "#e23744" }}
+        className="-mr-1 shrink-0 rounded-lg px-2 py-1 text-[12px] font-semibold"
+        style={{ color: "var(--color-panel-accent)" }}
       >
-        {dismissed ? (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        ) : (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
-          </svg>
-        )}
+        {dismissed ? "Show" : "Hide"}
       </button>
     </div>
   );
@@ -334,13 +334,28 @@ export default function SmartCartPanel() {
   };
 
   return (
+    /*
+      Full-bleed inside the cart card, not a card of its own.
+
+      This used to carry `mx-3 my-2`, its own rounded corners and the
+      prototype's dashed violet border, which read as a separate block floating
+      *over* the cart rather than continuing it — and the panel's argument is
+      that these are things to consider alongside what you are already buying,
+      which a detached box works against.
+
+      So: no horizontal inset, no outer border, and only the bottom corners
+      rounded, because this is the last child of the cart card and inherits its
+      corner. A single hairline on top does the work the dashed border was
+      doing — separating two kinds of content — without detaching them. The
+      tint stays, so the rows still read as provisional rather than as items
+      already in the basket.
+    */
     <section
       aria-label="Smart Cart suggestions"
-      className="mx-3 my-2 rounded-xl border border-dashed"
+      className="rounded-b-xl border-t border-[var(--color-hairline)]"
       style={
         {
           backgroundColor: "var(--color-panel-tint)",
-          borderColor: "color-mix(in srgb, var(--color-panel-accent) 35%, transparent)",
           // Feeds the row-collapse transition in globals.css, so the duration
           // has a single home in config.ts rather than a copy in the stylesheet.
           "--panel-row-exit": `${PANEL_ROW_EXIT_MS}ms`,
