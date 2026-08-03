@@ -111,10 +111,11 @@ function SkeletonRows() {
             <div className="panel-shimmer h-12 w-12 shrink-0 rounded-lg" />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <div className="panel-shimmer h-3 w-3/4 rounded" />
+              {/* Two bars for the two-line reason, then one for Browse &
+                  Replace, so the skeleton is the same shape as the row it
+                  stands in for and not merely the same height. */}
+              <div className="panel-shimmer h-2.5 w-full rounded" />
               <div className="panel-shimmer h-2.5 w-1/2 rounded" />
-              {/* Third bar for the Browse & Replace line, so the skeleton is
-                  the same shape as the row it stands in for, not just the same
-                  height. */}
               <div className="panel-shimmer h-2.5 w-1/3 rounded" />
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">

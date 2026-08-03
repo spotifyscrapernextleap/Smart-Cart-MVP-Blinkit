@@ -14,14 +14,14 @@
  * Run:  node phases/phase-8-events/verify_events.ts
  */
 
-import { getProduct } from "../../src/lib/catalogue.ts";
+import { getProduct, getProductsByTile, getTile } from "../../src/lib/catalogue.ts";
 import { getCart, getQuantity } from "../../src/lib/cart.ts";
 import {
   addProduct,
   decrementProduct,
   incrementProduct,
 } from "../../src/lib/cartActions.ts";
-import { EVENT_LOG_CAP } from "../../src/lib/config.ts";
+import { BROWSABLE_TILES, EVENT_LOG_CAP } from "../../src/lib/config.ts";
 import { logEvent, readEvents } from "../../src/lib/events.ts";
 import { STORAGE_KEYS } from "../../src/lib/storage.ts";
 import type { AppEvent, EventType } from "../../src/lib/types";
@@ -345,6 +345,24 @@ console.log("   the rule the panel's own stepper used to get wrong\n");
   check(
     "the panel is attributed separately",
     (cartEvents()[0].payload as { source: string }).source === "panel"
+  );
+
+  // A category listing is a third channel, added after the spec was written
+  // (D37). Attributing a browse as a search would inflate search's conversions,
+  // which is the error D22 exists to prevent.
+  freshWindow();
+  addProduct(product, "category");
+  check(
+    "a category browse is attributed to neither search nor panel",
+    (cartEvents()[0].payload as { source: string }).source === "category"
+  );
+
+  check(
+    "every browsable tile is a real tile with products",
+    BROWSABLE_TILES.every(
+      (id) => getTile(id) !== undefined && getProductsByTile(id).length > 0
+    ),
+    BROWSABLE_TILES.map((id) => `${id}:${getProductsByTile(id).length}`).join(" ")
   );
 
   // Quantity bumps.

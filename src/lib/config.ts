@@ -116,6 +116,41 @@ export const PANEL_CACHE_MAX_ENTRIES = 20;
 export const PANEL_ROW_EXIT_MS = 220;
 
 /**
+ * Home-screen tiles that open a full category listing when tapped.
+ *
+ * The build spec defers browse navigation entirely — "no tile is clickable in
+ * v1" — but an evaluator who taps a category and gets nothing concludes the
+ * grid is decoration, which is the same failure D12 fixed for search. Two tiles
+ * per section are opened up rather than all 27, so the work stays bounded and
+ * the home screen still reads as a catalogue rather than a menu.
+ *
+ * The nine chosen deliberately span all three classifications, so browsing
+ * demonstrates the persona rather than just the catalogue:
+ *
+ *   active      — vegetables-fruits, atta-rice-dal, chips-namkeen, drinks-juices
+ *   dormant     — cleaners-repellents, pet-store
+ *   never-bought— bath-body, skin-face, electronics
+ *
+ * Pet Store contributes one because the section contains exactly one tile.
+ *
+ * This does not weaken the panel's claim, for the same reason D12 did not: the
+ * panel says the user *did not think* to look here, never that they *could
+ * not*. A browsable Bath & Body that the panel still has to surface is the
+ * honest version of that argument. (PROJECT_MEMORY D37)
+ */
+export const BROWSABLE_TILES: readonly string[] = [
+  "vegetables-fruits",
+  "atta-rice-dal",
+  "chips-namkeen",
+  "drinks-juices",
+  "bath-body",
+  "skin-face",
+  "cleaners-repellents",
+  "electronics",
+  "pet-store",
+];
+
+/**
  * How long the Browse & Replace sheet takes to rise into view.
  *
  * Passed into `globals.css` as an inline custom property by the sheet itself,

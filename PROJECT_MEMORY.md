@@ -21,10 +21,10 @@ conversation.** Read this file top to bottom before touching anything.
 | 5 — Panel UI | ✅ committed | 11/11 panel cache |
 | 6 — Model layer | ✅ committed | 80/80 model |
 | 7 — Browse & Replace | ✅ committed | 71/71 replace |
-| 8 — Events | ✅ committed | 43/43 events |
+| 8 — Events | ✅ committed | 45/45 events |
 | **9 — Deploy** | **next** | needs GitHub + Vercel |
 
-**352 checks pass across eight suites. `tsc`, `eslint --max-warnings 0` and
+**354 checks pass across eight suites. `tsc`, `eslint --max-warnings 0` and
 `next build` are all clean.**
 
 **The whole feature is now built.** Search → add to cart → checkout → a four-row
@@ -70,8 +70,8 @@ open, and every S1 is closed.** Each phase README states which it closed.
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
-- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D36 exist;
-  the next new decision is D37.**
+- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D37 exist;
+  the next new decision is D38.**
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
 - Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
@@ -178,6 +178,7 @@ src/app/
   page.tsx                  HOME
   search/page.tsx           SEARCH RESULTS
   cart/page.tsx             CHECKOUT — cart lines → SmartCartPanel → BillDetails
+  category/[tile]/page.tsx  CATEGORY LISTING — static, one per BROWSABLE_TILES entry (D37)
   api/recommend/route.ts    THE ONLY SERVER-SIDE FILE. Only place GROQ_API_KEY is read.
                             Model call, 4s abort, every fallback route.
 src/components/             AppHeader, SearchBar, CategoryGrid, ProductCard, ProductImage,
@@ -274,7 +275,7 @@ Added beyond the spec, in a marked section (D10): `SEARCH_MAX_SCORE` 0.35 (D16) 
 `PANEL_ROW_EXIT_MS` 220 (F2) · `MODEL_REASONING_EFFORT` "low" (D32) ·
 `MODEL_MAX_COMPLETION_TOKENS` 1024 (D32) · `MODEL_SHORTLIST_DEPTH` 6 (D33) ·
 `REASON_MAX_CHARS` 100 / `REASON_MAX_WORDS` 8 (spec prose, made constants) ·
-`SHEET_ENTER_MS` 200 (D10)
+`SHEET_ENTER_MS` 200 (D10) · `BROWSABLE_TILES` 9 tiles (D37)
 
 ---
 
@@ -1223,6 +1224,65 @@ place someone would otherwise add one.
   spec's own full flow. That is the number that makes G3 acceptable — if the
   event set ever grows an order of magnitude, revisit the cap rather than the
   conclusion.
+
+---
+
+## Interlude — browsable categories and a wider reason line
+
+Two owner-requested changes taken after Phase 8, before deploy. Both are visible
+in the UI and neither is in the build spec.
+
+**D37 — Nine home-screen tiles open a category listing. The spec defers browse navigation entirely.**
+
+Spec §6 Phase 2 and the D12 consequences both state that no tile is clickable in
+v1. The owner asked for two tiles per section to become browsable, and the
+reasoning is the same one that produced D12: an evaluator who taps a category
+and gets nothing concludes the grid is decoration. Blocking browse simulated the
+symptom; opening it and watching the panel still do its work demonstrates the
+mechanism.
+
+The nine are listed in `BROWSABLE_TILES` in `config.ts` — one line to change —
+and deliberately span all three classifications, so browsing demonstrates the
+persona and not just the catalogue:
+
+| Class | Tiles |
+|---|---|
+| Active | `vegetables-fruits`, `atta-rice-dal`, `chips-namkeen`, `drinks-juices` |
+| Dormant | `cleaners-repellents`, `pet-store` |
+| Never-bought | `bath-body`, `skin-face`, `electronics` |
+
+Pet Store contributes one, because that section contains exactly one tile.
+
+`/category/[tile]` is a **server component with `generateStaticParams`**, so all
+nine prerender to static HTML and cost nothing at request time — the same
+posture as `/` and `/search`. A tile not in the list 404s rather than rendering,
+because a page the home screen does not link to is not a page this app has.
+
+Two consequences worth knowing:
+
+- **`cart_add.source` gains a third value, `"category"`.** Spec §3.6 offers
+  `search | panel`, but it predates browsable categories. Attributing a browse
+  as a search would inflate search's conversions, which is exactly the error D22
+  exists to prevent, so the honest option is a third value. `ProductCard` takes
+  a `source` prop, defaulting to `"search"`.
+- **The grid now has mixed affordance** — 9 tiles respond, 18 do not. Rather
+  than leave that to be discovered by tapping, a browsable tile gets a white
+  card, a hairline border, a bolder label and a chevron; the rest stay flat on
+  the sunken background. Nothing is dimmed, because an inert tile here is
+  scenery rather than a disabled control. **If all 27 should be browsable, it is
+  a one-line change to `BROWSABLE_TILES`** — the route and the grid already
+  handle any tile.
+
+**The panel reason line wraps to two lines.**
+
+Observed on a real screen: *"You last ordered from Cleaners & Repellents 5
+weeks…"* — clamped to one line, the longer tile labels cut the sentence off and
+lose the word the claim depends on. The reason line is the one element the idea
+doc calls P0, so it now gets `clamp-2` and the row height absorbs it:
+`PANEL_ROW_HEIGHT_CLASS` went `h-[92px]` → `h-[106px]`. The skeleton reads the
+same constant and gained a fourth shimmer bar, so **F1 still measures 0px shift**
+(477.33px in both states). This predated Phase 7 — it was not caused by the
+Browse & Replace line.
 
 ---
 

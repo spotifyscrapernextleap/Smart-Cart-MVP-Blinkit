@@ -3,7 +3,7 @@
 import { getTileLabel } from "@/lib/catalogue";
 import { addProduct, decrementProduct, incrementProduct } from "@/lib/cartActions";
 import { useCartQuantity } from "@/lib/useCart";
-import type { Product } from "@/lib/types";
+import type { CartAddSource, Product } from "@/lib/types";
 
 import ProductImage from "./ProductImage";
 import QuantityStepper from "./QuantityStepper";
@@ -25,10 +25,17 @@ import QuantityStepper from "./QuantityStepper";
  * `slot` is load-bearing on panel events (spec §3.6): the event has to mean the
  * thing it is named, not every keystroke of interaction with it.
  */
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({
+  product,
+  source = "search",
+}: {
+  product: Product;
+  /** Which surface this card is on. Attributes `cart_add`. (D37) */
+  source?: CartAddSource;
+}) {
   const quantity = useCartQuantity(product.id);
 
-  const handleAdd = () => addProduct(product, "search");
+  const handleAdd = () => addProduct(product, source);
   const handleIncrement = () => incrementProduct(product);
   const handleDecrement = () => decrementProduct(product, quantity);
 

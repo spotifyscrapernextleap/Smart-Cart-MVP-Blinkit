@@ -178,6 +178,9 @@ export type RecommendOutcome =
    */
   | "fallback_nokey";
 
+/** Which surface a product entered the cart from. See `cart_add` below. */
+export type CartAddSource = "search" | "panel" | "category";
+
 export interface EventPayloads {
   panel_impression: {
     products: ProductId[];
@@ -197,7 +200,16 @@ export interface EventPayloads {
     tile: TileId;
   };
   search: { query: string; resultCount: number };
-  cart_add: { productId: ProductId; tile: TileId; source: "search" | "panel" };
+  /**
+   * `source` gains "category" beyond the spec's `search | panel`.
+   *
+   * Spec §3.6 predates browsable categories, which the spec defers entirely.
+   * Now that a product can enter the cart from a category listing, calling that
+   * "search" would attribute a browse to a channel the user never used — and
+   * inflating a channel's conversions is precisely the error D22 exists to
+   * prevent. A third value is the honest option. (D37)
+   */
+  cart_add: { productId: ProductId; tile: TileId; source: CartAddSource };
   cart_remove: { productId: ProductId; tile: TileId };
   recommend_call: { latencyMs: number; outcome: RecommendOutcome };
 }

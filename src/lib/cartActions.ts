@@ -15,7 +15,7 @@
 
 import { addToCart, removeFromCart, setQuantity } from "./cart.ts";
 import { logEvent } from "./events.ts";
-import type { Product } from "./types";
+import type { CartAddSource, Product } from "./types";
 
 /**
  * A product entering the cart. Logs `cart_add` with the surface it came from.
@@ -24,7 +24,7 @@ import type { Product } from "./types";
  * `source` is an attribution of how the product got in, and re-logging it on a
  * later "+" would count a quantity bump as a fresh conversion. (D22)
  */
-export function addProduct(product: Product, source: "search" | "panel"): void {
+export function addProduct(product: Product, source: CartAddSource): void {
   addToCart(product.id, 1);
   logEvent("cart_add", { productId: product.id, tile: product.tile, source });
 }

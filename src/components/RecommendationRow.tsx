@@ -32,11 +32,12 @@ import QuantityStepper from "./QuantityStepper";
  * construction rather than by coincidence. The Bill details block must not shift
  * when the panel resolves. (EDGE_CASES F1)
  *
- * Grew from 76px in Phase 7 to fit the Browse & Replace control. Because the
- * skeleton reads the same constant, that was a one-line change and the two
- * cannot drift — which is the reason it was exported in the first place.
+ * Grew from 76px in Phase 7 to fit the Browse & Replace control, then to 106px
+ * so the reason line can wrap to two. Because the skeleton reads the same
+ * constant, each was a one-line change and the two cannot drift — which is the
+ * reason it was exported in the first place.
  */
-export const PANEL_ROW_HEIGHT_CLASS = "h-[92px]";
+export const PANEL_ROW_HEIGHT_CLASS = "h-[106px]";
 
 export default function RecommendationRow({
   row,
@@ -87,7 +88,14 @@ export default function RecommendationRow({
           <h3 className="clamp-1 text-[13px] leading-tight font-semibold text-[var(--color-ink)]">
             {product.name}
           </h3>
-          <p className="clamp-1 mt-0.5 text-[11px] leading-tight text-[var(--color-ink-muted)]">
+          {/*
+            Two lines, not one. Clamped to a single line, the longer tile labels
+            cut the sentence off mid-fact — "You last ordered from Cleaners &
+            Repellents 5 weeks…" loses the word the claim depends on. The reason
+            line is the one element the idea doc calls P0, so it gets the room
+            it needs and the row height absorbs it.
+          */}
+          <p className="clamp-2 mt-0.5 text-[11px] leading-tight text-[var(--color-ink-muted)]">
             {row.reason}
           </p>
 
