@@ -111,6 +111,35 @@ Reading it is the only way to know which one shipped.
   `master` — was rejected: it leaves the repo's default branch showing a stub
   README, which misleads anyone browsing the repo and re-breaks on any future
   re-import.
+- **The branch mismatch also poisoned Vercel's framework detection, and that
+  caused a *second* 404 after the branch was fixed.** Framework Preset is
+  decided **at import time** and then stored on the project. Because `main`
+  held only a README when the project was imported, detection found no
+  `package.json` and set the preset to **"Other"**. Moving the app onto `main`
+  did not revisit that decision — so the next build ran install and compile
+  (33s, status "Ready"), then ignored `.next/` and published `public/` as a
+  flat static site.
+
+  The symptom is diagnosable from outside the dashboard, which is worth
+  knowing because it distinguishes this from every other 404:
+
+  ```
+  /                    404
+  /cart                404
+  /api/recommend       404
+  /images/p_00001.png  200   ← public/ is being served; the app is not
+  ```
+
+  **A static asset serving while every route 404s means the framework preset
+  is wrong**, not the code. Fixed in Settings → Build and Deployment →
+  Framework Settings → Framework Preset → `Next.js`, then redeploy with the
+  build cache disabled. A correct build prints a route table (16 routes,
+  including `ƒ /api/recommend`); a build that finishes quietly has not built
+  this app.
+
+  **The general lesson: import the project only after the code is on the
+  default branch.** Importing an empty or README-only repo silently commits
+  the project to the wrong preset, and nothing later un-commits it.
 - **`git log --all` also has to be checked, not just `git log`** — a key
   committed and later reverted on the same branch is invisible to `git log`
   on `HEAD` but still sits in history and is still pushed. This repo has
