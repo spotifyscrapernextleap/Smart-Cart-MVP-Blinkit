@@ -9,7 +9,9 @@ conversation.** Read this file top to bottom before touching anything.
 
 ## START HERE — current state
 
-**Phases 0–8 are complete, tested and committed. Phase 9 is next — and last.**
+**Phases 0–9 are code-complete. All that remains is the owner running the
+GitHub push and Vercel import themselves — see below for why that step could
+not be done from inside this session.**
 
 | Phase | State | Test result |
 |---|---|---|
@@ -22,12 +24,12 @@ conversation.** Read this file top to bottom before touching anything.
 | 6 — Model layer | ✅ committed | 80/80 model |
 | 7 — Browse & Replace | ✅ committed | 71/71 replace |
 | 8 — Events | ✅ committed | 45/45 events |
-| **9 — Deploy** | **next** | needs GitHub + Vercel |
+| **9 — Deploy** | **pre-flight done; push/import owner-executed** | 366/366 + build clean |
 
 **354 checks pass across the eight phase suites** (Phases 1–8), **plus 12 in the
 Phase 0 data verifier** — 366 in total, if you count the way the commands
 section runs them. `tsc`, `eslint --max-warnings 0` and `next build` are all
-clean.
+clean — reconfirmed at the start of Phase 9.
 
 **The whole feature is now built.** Search *or* browse a category → add to cart
 → checkout → a four-row Smart Cart panel whose products and reason lines are
@@ -37,22 +39,38 @@ Measured round trip 1.3–2.0s against a 4s abort.
 
 ### The immediate next action
 
-**Phase 9 — Deploy. It is the only thing left.** Push to GitHub, import into
-Vercel, set `GROQ_API_KEY` in the Vercel project settings, and test on the
-production URL from a phone.
+**Push to GitHub and import into Vercel — the owner's steps, not this session's.**
+Full commands are in
+[`phases/phase-9-deploy/README.md`](phases/phase-9-deploy/README.md). In short:
 
-The one test that matters: on the deployed URL, `recommend_call.outcome` must
-read `model`, not a fallback. `fallback_nokey` there means the env var was not
-set in Vercel; `fallback_timeout` means the region is too far for the 4s budget.
+```bash
+git remote add origin https://github.com/<your-username>/<repo-name>.git
+git push -u origin master
+```
 
-The build now emits **nine additional static pages** — one per `BROWSABLE_TILES`
+Then import the repo at [vercel.com/new](https://vercel.com/new), set
+`GROQ_API_KEY` in Project Settings → Environment Variables, deploy, and test on
+the production URL from a phone.
+
+**Why this session did not push or deploy:** 9.1 needs a valid GitHub
+credential (`gh auth status` currently fails — token invalid) and pushing code
+is a visible-to-others action regardless; 9.2 is done through an interactive
+Vercel dashboard OAuth login that cannot be scripted from a repo checkout.
+Everything checkable from inside the repo was checked instead — see the
+pre-flight table in the Phase 9 section below.
+
+The one test that matters once deployed: on the production URL,
+`recommend_call.outcome` must read `model`, not a fallback. `fallback_nokey`
+there means the env var was not set in Vercel; `fallback_timeout` means the
+region is too far for the 4s budget.
+
+The build emits **nine additional static pages** — one per `BROWSABLE_TILES`
 entry (D37) — all prerendered, so they add HTML but no request-time work.
 
-**Two things to do before pushing**, both already noted below: re-check
-`git log --all -- .env.local` returns nothing (H4), and be aware that the UI has
-still never been reviewed on a real screen at more than one viewport — the
-browser pane has never composited in any session, so every layout claim in this
-file is a measured `getBoundingClientRect`, not something anyone looked at.
+**Still true:** the UI has never been reviewed on a real screen at more than
+one viewport — the browser pane has never composited in any session, so every
+layout claim in this file is a measured `getBoundingClientRect`, not something
+anyone looked at.
 
 ---
 
@@ -1330,24 +1348,39 @@ Browse & Replace line.
 
 ---
 
-## What is already prepared for Phase 9
+## Phase 9 — Deploy
 
-### Phase 9 — Deploy
+**Pre-flight complete; 9.1–9.3 are owner-executed.** Detail, exact commands and
+the production-verification test are in
+[`phases/phase-9-deploy/README.md`](phases/phase-9-deploy/README.md). This
+phase has no code and no verify suite — spec 9.1–9.3 is entirely
+infrastructure (GitHub push, Vercel import), which needs the owner's own
+accounts and credentials, so this session did everything checkable from inside
+the repo instead of the push/import themselves.
 
-- `.gitignore` already covers `.env.local`, and `git log --all -- .env.local`
-  returns nothing — checked in Phase 6. **Re-check before pushing** (H4).
-- `.env.example` **now exists and is committed**, containing `GROQ_API_KEY=`.
-- **`GROQ_API_KEY` must be set in the Vercel project settings**, not just locally.
-  If the deployed panel reports `fallback_nokey`, that is the whole diagnosis.
-- **Do not put these images through `next/image`** (H1, already closed) — they are
-  served as plain `<img>` deliberately; Vercel meters optimised source images and
-  2,236 of them would exhaust the free tier mid-demo.
-- `catalogue.json` is 0.62 MB and is the only large static import in the route
-  (H2). Do not add more.
-- The Phase 9 test that matters: on the deployed URL, `recommend_call.outcome`
-  must read `model`, not a fallback. If it reads fallback in production but model
-  locally, the key or the region is the problem (H3) — and `fallback_nokey` exists
-  precisely to tell those apart.
+Pre-flight results:
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` / `eslint --max-warnings 0` / `npm run build` | all clean |
+| All 9 phase verify suites | 366/366 |
+| `git log --all -- .env.local` | empty — never committed (H4) |
+| `grep -rl "gsk_\|GROQ_API_KEY" .next/static/` | empty — key does not leak into the client bundle (E1, re-checked) |
+| `.env.example` | present, committed, template-only |
+
+`.gitignore` already covers `.env.local` and `.env*.local`. **`GROQ_API_KEY`
+must be set in the Vercel project settings**, not just locally — if the
+deployed panel reports `fallback_nokey`, that is the whole diagnosis. Do not
+put the catalogue images through `next/image` (H1, already closed) — Vercel
+meters optimised source images and 2,236 of them would exhaust the free tier
+mid-demo. `catalogue.json` (0.62 MB) is the only large static import in the
+route (H2); do not add more.
+
+**H3 and H4 stay open in the register below** until the owner actually
+completes 9.1–9.3 and confirms `recommend_call.outcome` reads `model` on the
+production URL — a check this session could reconfirm the *inputs* to (no
+committed key, no client-side leak) but cannot perform against a Vercel
+deployment that does not yet exist.
 
 ---
 
@@ -1363,9 +1396,11 @@ From [`EDGE_CASES.md`](EDGE_CASES.md). Everything else is closed or withdrawn.
 | 6, 9 | E11 token-per-minute rate limit — accepted, mitigated, not eliminated |
 
 **No S1 is open, and nothing in the recommendation engine or the panel is
-open.** Everything remaining is events, deploy, or accepted. The nearest thing
-to a live risk is **E11**: not a defect, but the
-reason a demo can show a correct model panel on the first cart and
+open.** Everything remaining is deploy or accepted. H3 and H4 close the moment
+the owner completes the push/import above and confirms the production
+`outcome`; see [`phases/phase-9-deploy/README.md`](phases/phase-9-deploy/README.md).
+The nearest thing to a live risk is **E11**: not a defect, but the reason a
+demo can show a correct model panel on the first cart and
 `fallback_ratelimit` on the second within the same minute.
 
 ---
