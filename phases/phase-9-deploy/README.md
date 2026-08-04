@@ -1,8 +1,13 @@
 # Phase 9 — Deploy
 
-**Status:** pre-flight complete; the push and the Vercel import are owner-executed steps (see below for why)
+**Status:** ✅ complete — deployed, and the spec's test passes on the production URL
+**Live:** <https://smart-cart-mvp-blinkit.vercel.app>
 **Build spec reference:** §6 Phase 9 (9.1–9.3), §7.1–7.2
-**Edge cases addressed:** H3, H4 — see [`../../EDGE_CASES.md`](../../EDGE_CASES.md) (closed by the owner completing 9.2–9.3, not by this session)
+**Edge cases closed:** H2, H3, H4 — see [`../../EDGE_CASES.md`](../../EDGE_CASES.md)
+
+It took two false starts to get there, both of which produced a 404 that
+looked like a broken app and was not. Both are written up under Gotchas
+below, because each is a trap that costs an hour if you have not seen it.
 
 This phase has no code and no verify suite — spec 9.1–9.3 is entirely
 infrastructure (a GitHub push and a Vercel import), which needs the project
@@ -65,6 +70,48 @@ git log --all --oneline -- .env.local   # must print nothing
    `GROQ_API_KEY` = the same value from local `.env.local`, scoped to
    Production (and Preview, if you want PR previews to also hit the model).
 3. Deploy.
+
+## Test results — the spec's Phase 9 test
+
+> *On the deployed URL, a full flow completes. `recommend_call.outcome` reads
+> `model`, not `fallback`.*
+
+**PASS.** From `sc_events` on `smart-cart-mvp-blinkit.vercel.app`:
+
+```json
+{ "type": "recommend_call", "latencyMs": 1482, "outcome": "model" }
+```
+
+1482ms against a 4000ms abort, and inside the 1.3–2.0s range measured locally
+— so the deploy region (Mumbai, `bom1`) is close enough to Groq and the env
+var is set. Neither of the two things this test exists to catch is present.
+
+| Check | Result |
+|---|---|
+| `/`, `/cart`, `/search`, `/category/pet-store` | all HTTP 200 |
+| `/api/recommend` | HTTP 200, `"outcome":"model"`, 1.59s |
+| Panel renders on the deployed cart page | 4 rows, reason lines, Browse & replace, ADD, Hide |
+| Invariants 1–6 on the production response | 4 rows · 4 distinct tiles · A,A,B,B · slot A dormant, slot B never-bought · slot B under the ₹100 ceiling (₹97, ₹70) · nothing from the cart or its tile |
+| Model is genuinely choosing (D33) | picks came back rank 1, 6, 17, 28 — three of four off rank 1, so the prompt has not regressed into reproducing `products[0]` |
+| Three consecutive carts in one minute | all three `model` — D33's token mitigation holds in production (E11) |
+
+The panel as served, on a cart holding one packet of Maggi noodles:
+
+| Slot | Product | Reason |
+|---|---|---|
+| A | Hide & Seek Choco Rolls | *You last ordered from Bakery & Biscuits 10 weeks ago* |
+| A | Microfibre Cleaning Cloth | *You last ordered from Cleaners & Repellents 5 weeks ago* |
+| B | LED Bulb 0.5W | *Popular with households near you* |
+| B | Agarbathi Variety Combi | *Common alongside weekly staples* |
+
+Both slot-A lines name their tile and not the product (E10); neither slot-B
+line claims a purchase (E2).
+
+**Still not done: the UI has never been reviewed by eye.** Screenshots failed
+again here — the browser pane does not composite, so
+`computer{action:"screenshot"}` times out, exactly as in every prior session.
+Everything above is DOM text and measured geometry. A human should still look
+at the deployed URL on a real phone.
 
 ## What to run — 9.3, verify on the production URL
 

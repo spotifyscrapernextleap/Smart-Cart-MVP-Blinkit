@@ -9,9 +9,9 @@ conversation.** Read this file top to bottom before touching anything.
 
 ## START HERE — current state
 
-**Phases 0–9 are code-complete. All that remains is the owner running the
-GitHub push and Vercel import themselves — see below for why that step could
-not be done from inside this session.**
+**All ten phases are complete, tested and deployed. The build is finished.**
+
+**Live: <https://smart-cart-mvp-blinkit.vercel.app>**
 
 | Phase | State | Test result |
 |---|---|---|
@@ -24,7 +24,7 @@ not be done from inside this session.**
 | 6 — Model layer | ✅ committed | 80/80 model |
 | 7 — Browse & Replace | ✅ committed | 71/71 replace |
 | 8 — Events | ✅ committed | 45/45 events |
-| **9 — Deploy** | **pre-flight done; push/import owner-executed** | 366/366 + build clean |
+| **9 — Deploy** | ✅ **deployed** | `outcome: "model"` at 1482ms on the production URL |
 
 **354 checks pass across the eight phase suites** (Phases 1–8), **plus 12 in the
 Phase 0 data verifier** — 366 in total, if you count the way the commands
@@ -39,38 +39,24 @@ Measured round trip 1.3–2.0s against a 4s abort.
 
 ### The immediate next action
 
-**Push to GitHub and import into Vercel — the owner's steps, not this session's.**
-Full commands are in
-[`phases/phase-9-deploy/README.md`](phases/phase-9-deploy/README.md). In short:
+**There isn't one. The build is done.** The spec's final test passes on the
+production URL: `recommend_call.outcome` reads `model` at 1482ms, not a
+fallback. Repo: `github.com/spotifyscrapernextleap/smart-cart-mvp-blinkit`,
+branch **`main`** (see the Phase 9 section — it was `master` for most of the
+build).
 
-```bash
-git remote add origin https://github.com/<your-username>/<repo-name>.git
-git push -u origin master
-```
+**The one thing still genuinely undone: nobody has looked at this app.**
+Screenshots have failed in every single session — the browser pane never
+composites, so `computer{action:"screenshot"}` times out. Every layout claim
+in this file is a measured `getBoundingClientRect` or DOM text, never a human
+or a rendered image. **Open the deployed URL on a real phone before showing
+it to anyone.** That is the only outstanding risk, and it is a real one:
+nothing here would have caught, say, a colour that fails contrast or a
+reason line that collides with a price at 320px.
 
-Then import the repo at [vercel.com/new](https://vercel.com/new), set
-`GROQ_API_KEY` in Project Settings → Environment Variables, deploy, and test on
-the production URL from a phone.
-
-**Why this session did not push or deploy:** 9.1 needs a valid GitHub
-credential (`gh auth status` currently fails — token invalid) and pushing code
-is a visible-to-others action regardless; 9.2 is done through an interactive
-Vercel dashboard OAuth login that cannot be scripted from a repo checkout.
-Everything checkable from inside the repo was checked instead — see the
-pre-flight table in the Phase 9 section below.
-
-The one test that matters once deployed: on the production URL,
-`recommend_call.outcome` must read `model`, not a fallback. `fallback_nokey`
-there means the env var was not set in Vercel; `fallback_timeout` means the
-region is too far for the 4s budget.
-
-The build emits **nine additional static pages** — one per `BROWSABLE_TILES`
-entry (D37) — all prerendered, so they add HTML but no request-time work.
-
-**Still true:** the UI has never been reviewed on a real screen at more than
-one viewport — the browser pane has never composited in any session, so every
-layout claim in this file is a measured `getBoundingClientRect`, not something
-anyone looked at.
+If you pick this up again, the likely work is: a visual pass, then the
+deferred P1 items in spec §8 (struck-through `mrp`, the bulk-add tick) — both
+of which were deliberately cut and have decisions explaining why (D28, D29).
 
 ---
 
@@ -88,14 +74,14 @@ rationale behind the rules. Where they conflict with each other or with reality,
 the resolution is a numbered decision below.
 
 **Companion register:** [`EDGE_CASES.md`](EDGE_CASES.md) — 60 identified failure
-modes with severity, mitigation and owning phase. **54 closed, 1 withdrawn, 5
+modes with severity, mitigation and owning phase. **57 closed, 1 withdrawn, 2
 open, and every S1 is closed.** Each phase README states which it closed.
 
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
-- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D38 exist;
-  the next new decision is D39.**
+- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D39 exist;
+  the next new decision is D40.**
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
 - Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
@@ -157,7 +143,7 @@ python scripts/reduce_catalogue.py && rm -rf public/images && python scripts/gen
 | Runtime deps | `next`, `react`, `react-dom`, `fuse.js`, `openai` (7.3, Groq-compatible client) |
 | Python | **3.9.9** — spec asks for 3.10+ |
 | Python packages | pandas 2.3.3, Pillow 10.2.0, openpyxl 3.1.5 |
-| Git | `master`, **no remote yet** |
+| Git | branch **`main`** (was `master` until Phase 9 — D39), remote `github.com/spotifyscrapernextleap/smart-cart-mvp-blinkit` |
 | Groq key | present in `.env.local` (gitignored, never committed — verified) |
 | Model | **`openai/gpt-oss-120b`**, not the spec's Llama — see D32 |
 | Free-tier limits (measured) | 1,000 requests/day, **8,000 tokens/minute** — tokens bind first |
@@ -1350,58 +1336,79 @@ Browse & Replace line.
 
 ## Phase 9 — Deploy
 
-**Pre-flight complete; 9.1–9.3 are owner-executed.** Detail, exact commands and
-the production-verification test are in
-[`phases/phase-9-deploy/README.md`](phases/phase-9-deploy/README.md). This
-phase has no code and no verify suite — spec 9.1–9.3 is entirely
-infrastructure (GitHub push, Vercel import), which needs the owner's own
-accounts and credentials, so this session did everything checkable from inside
-the repo instead of the push/import themselves.
+**Completed and live at <https://smart-cart-mvp-blinkit.vercel.app>.** The
+spec's test passes: `recommend_call { outcome: "model", latencyMs: 1482 }`.
+Detail in [`phases/phase-9-deploy/README.md`](phases/phase-9-deploy/README.md).
 
-Pre-flight results:
+Closed edge cases **H2** (bundle size — the function deployed and served),
+**H3** (model, not fallback, in production), **H4** (`.env.local` absent from
+the pushed tree).
 
-| Check | Result |
-|---|---|
-| `npx tsc --noEmit` / `eslint --max-warnings 0` / `npm run build` | all clean |
-| All 9 phase verify suites | 366/366 |
-| `git log --all -- .env.local` | empty — never committed (H4) |
-| `grep -rl "gsk_\|GROQ_API_KEY" .next/static/` | empty — key does not leak into the client bundle (E1, re-checked) |
-| `.env.example` | present, committed, template-only |
+No code and no verify suite: 9.1–9.3 is entirely infrastructure. Pre-flight
+re-confirmed `tsc`/`eslint`/`build` clean, 366/366 across the nine suites,
+`git log --all -- .env.local` empty, and no `gsk_`/`GROQ_API_KEY` anywhere in
+`.next/static/` (E1 re-checked).
 
-`.gitignore` already covers `.env.local` and `.env*.local`. **`GROQ_API_KEY`
-must be set in the Vercel project settings**, not just locally — if the
-deployed panel reports `fallback_nokey`, that is the whole diagnosis. Do not
-put the catalogue images through `next/image` (H1, already closed) — Vercel
-meters optimised source images and 2,236 of them would exhaust the free tier
-mid-demo. `catalogue.json` (0.62 MB) is the only large static import in the
-route (H2); do not add more.
+**Production evidence:** all routes 200; the panel renders four rows with
+reason lines; invariants 1–6 hold on the served response (4 distinct tiles,
+A,A,B,B, slot B under the ₹100 ceiling, nothing from the cart's tile); model
+picks came back rank 1, 6, 17, 28, so D33's anti-rank-1 prompt paragraph is
+still doing its job; and three consecutive carts inside one minute all
+returned `model`, so E11's mitigation holds under demo-shaped usage.
 
-**H3 and H4 stay open in the register below** until the owner actually
-completes 9.1–9.3 and confirms `recommend_call.outcome` reads `model` on the
-production URL — a check this session could reconfirm the *inputs* to (no
-committed key, no client-side leak) but cannot perform against a Vercel
-deployment that does not yet exist.
+### D39 — Development moved from `master` to `main`.
+
+The repo was created on GitHub with a README, which made `main` the default
+branch while the whole build sat on `master`. Rather than repoint Vercel at
+`master`, the README commit was merged into this history
+(`--allow-unrelated-histories`) so `git push origin master:main` was a
+fast-forward, and local `master` was renamed `main`. **`origin/master` still
+exists at `73ec818` and is now stale** — every commit in it is contained in
+`main`, so deleting it loses nothing, but nothing has deleted it yet.
+
+### Two 404s that were not the app
+
+Both cost real time and neither was a code defect. **Full writeups, including
+the exact symptoms, are in the phase README** — this is the short version,
+because the second one in particular will catch anyone who imports a Vercel
+project before the code is on the default branch.
+
+1. **Vercel builds the *default* branch.** It cloned `main` (one README),
+   found no `package.json`, and produced nothing: `Build Completed in
+   /vercel/output [13ms]`. **A 13ms "successful" build with no route table has
+   not built this app.**
+2. **Framework Preset is decided at import time and then stored.** Because
+   `main` was README-only at import, detection set the preset to **"Other"**,
+   and fixing the branch did not revisit it — so the next build compiled for
+   33s, reported Ready, then published `public/` as a flat static site.
+   Diagnosable without the dashboard: every route 404s while
+   `/images/p_00001.png` returns 200. **A static asset serving while every
+   route 404s means the preset is wrong, not the code.** Fixed in Settings →
+   Build and Deployment → Framework Preset → `Next.js`.
+
+**Do not put the catalogue images through `next/image`** (H1) — Vercel meters
+optimised source images and 2,236 of them would exhaust the free tier
+mid-demo. `catalogue.json` (0.62 MB) remains the only large static import in
+the route; do not add more.
 
 ---
 
-## Open edge cases (5)
+## Open edge cases (2)
 
-From [`EDGE_CASES.md`](EDGE_CASES.md). Everything else is closed or withdrawn.
+From [`EDGE_CASES.md`](EDGE_CASES.md). Everything else is closed or withdrawn —
+**57 closed, 1 withdrawn, 2 open** of 60.
 
 | Phase | Open |
 |---|---|
-| 9 | H3 works locally, falls back in production, H4 `.env.local` committed |
 | 4, 7 | D7 thin shortlists at a low ceiling |
-| 4, 9 | H2 serverless bundle size |
 | 6, 9 | E11 token-per-minute rate limit — accepted, mitigated, not eliminated |
 
-**No S1 is open, and nothing in the recommendation engine or the panel is
-open.** Everything remaining is deploy or accepted. H3 and H4 close the moment
-the owner completes the push/import above and confirms the production
-`outcome`; see [`phases/phase-9-deploy/README.md`](phases/phase-9-deploy/README.md).
-The nearest thing to a live risk is **E11**: not a defect, but the reason a
-demo can show a correct model panel on the first cart and
-`fallback_ratelimit` on the second within the same minute.
+**No S1 is open, and neither remaining item is a defect.** E11 is the nearest
+thing to a live risk — the Groq free tier's 8,000 tokens/minute is why a demo
+*could* show a model panel on one cart and `fallback_ratelimit` on the next
+within the same minute. D33 (shortlist depth 6, ~2,072 prompt tokens) buys
+roughly three calls a minute, and three consecutive production calls were
+measured all returning `model`. It is mitigated, not eliminated.
 
 ---
 

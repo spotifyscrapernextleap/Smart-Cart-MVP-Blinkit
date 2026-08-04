@@ -134,9 +134,9 @@ code rather than by the model.
 | # | Sev | Case | Mitigation | Phase |
 |---|---|---|---|---|
 | H1 | ✅ **S1** | ⚠️ **`next/image` optimisation across 2,236 PNGs.** Vercel's free tier meters optimised source images; an evaluator browsing the catalogue could exhaust the quota and start serving errors mid-demo. 18.8 MB across 2,236 files. | Serve these as plain `<img>`, or set `unoptimized`. They are already flat 400×400 tiles — there is nothing for the optimiser to win. | 2, 9 |
-| H2 | S2 | Serverless function bundle size from static imports. `catalogue.json` is 0.62 MB, well under the 50 MB limit — but only because it is the *only* large static import in the route. | Confirmed safe. Do not import images or add further large static data into the route. | 4, 9 |
-| H3 | S2 | Works locally with `source: "model"`, falls back in production — wrong region, missing Vercel env var, or a latency budget that only fits on a local network. | This is exactly what the spec's Phase 9 test exists to catch. Check `recommend_call.outcome` on the deployed URL, not just that the panel renders. Stays open until the owner deploys and checks it — see [`phases/phase-9-deploy/README.md`](phases/phase-9-deploy/README.md). | 9 |
-| H4 | S2 | `.env.local` committed. | Gitignored and verified in Phase 0, re-checked in Phase 9 (`git log --all -- .env.local` empty, no key in `.next/static/`). Stays open as a checklist item — re-run the same check once more immediately before the actual `git push`, since commits can land after this was last verified. | 9 |
+| H2 | ✅ S2 | Serverless function bundle size from static imports. `catalogue.json` is 0.62 MB, well under the 50 MB limit — but only because it is the *only* large static import in the route. | Confirmed safe **in production**: the function deployed and served `/api/recommend` in ~1.5s. Do not import images or add further large static data into the route. | 4, 9 ✅ |
+| H3 | ✅ S2 | Works locally with `source: "model"`, falls back in production — wrong region, missing Vercel env var, or a latency budget that only fits on a local network. | **Closed on the deployed URL.** `sc_events` on `smart-cart-mvp-blinkit.vercel.app` reads `recommend_call { outcome: "model", latencyMs: 1482 }` — inside the 4s budget and matching the 1.3–2.0s measured locally, so neither the key nor the region is a problem. Three consecutive carts in one minute all returned `model`, so D33's mitigation holds in production too. | 9 ✅ |
+| H4 | ✅ S2 | `.env.local` committed. | **Closed.** Gitignored, verified in Phase 0, re-checked immediately before the push (`git log --all -- .env.local` empty, no `gsk_`/`GROQ_API_KEY` in `.next/static/`), and confirmed absent from the pushed tree — `git ls-tree -r origin/main` returns only `.env.example`. | 9 ✅ |
 | H5 | S3 | 18.8 MB of PNGs in git. | Acceptable — well under any limit, and committing them is what makes the deploy reproducible. | 9 ✅ |
 | H6 | S3 | Python 3.9 vs the spec's 3.10+. | Scripts avoid `match` and `X \| Y` runtime unions. Only affects the two local data tools, which never deploy. | 0 ✅ |
 
@@ -157,8 +157,8 @@ All three original items are now resolved. One new one is open.
 
 ## Summary
 
-Two entries were withdrawn and five added across the build. Current shape after
-Phase 8: **54 closed, 1 withdrawn, 5 open** of 60.
+Two entries were withdrawn and five added across the build. Final shape after
+Phase 9: **57 closed, 1 withdrawn, 2 open** of 60.
 
 - **7 × S1 the spec does not mention** — C1 (hydration), C2 (stale cart ids),
   D1 (cart contents recommended), **D1a (cart *tiles* recommended)**, D2 (undefined
@@ -167,8 +167,13 @@ Phase 8: **54 closed, 1 withdrawn, 5 open** of 60.
 - **Every S1 is now closed.** The two that were open through Phase 5, E1 and E2,
   were closed in Phase 6 and verified: no key in the built client bundle, and no
   purchase claim reachable on a slot-B line.
-- **The only remaining open items are Phase 9 (H3, H4), plus D7, H2 and E11.**
-  None is an S1. Everything reachable before deploy is closed.
+- **Phase 9 closed H2, H3 and H4 on the deployed URL.** `recommend_call.outcome`
+  reads `model` in production at 1482ms, the serverless function built and
+  served, and `.env.local` is absent from the pushed tree.
+- **The only remaining open items are D7 and E11.** Neither is an S1, and
+  neither is a defect: D7 is thin shortlists at a low price ceiling, E11 is the
+  Groq free tier's token-per-minute limit — accepted and mitigated by D33, and
+  measured holding across three consecutive production calls.
 - **Phase 8's audit found a defect the register had not predicted:** the panel's
   own row stepper removed a product with no `cart_remove`. Not a listed case —
   it was a call site that drifted from D22 after the rule was written. The rule
