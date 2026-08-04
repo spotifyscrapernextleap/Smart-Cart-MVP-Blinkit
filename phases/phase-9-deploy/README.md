@@ -87,6 +87,30 @@ Reading it is the only way to know which one shipped.
 
 ## Gotchas
 
+- **The first deploy 404'd, and the cause was a branch mismatch, not the app.**
+  The repo was created on GitHub with a README, which created `main` and made
+  it the **default** branch. The app was pushed to `master`. Vercel builds the
+  *default* branch for Production, so it cloned `main`, found one file
+  (`README.md`) and no `package.json`, and produced nothing:
+
+  ```
+  WARNING! Build output contains no "functions" or "static" directory
+  Build Completed in /vercel/output [13ms]
+  ```
+
+  **A 13ms "successful" build is the tell** — a real Next.js build of this repo
+  takes seconds and prints a route table. A build that succeeds with no route
+  table has not built this app, and the 404 that follows is Vercel correctly
+  serving an empty deployment. Nothing in the app, the env vars or the Vercel
+  settings was wrong.
+
+  Fixed by merging the README commit into this history
+  (`git merge origin/main --allow-unrelated-histories`) so
+  `git push origin master:main` was a fast-forward, then moving development
+  onto `main`. The alternative — repointing Vercel's Production Branch at
+  `master` — was rejected: it leaves the repo's default branch showing a stub
+  README, which misleads anyone browsing the repo and re-breaks on any future
+  re-import.
 - **`git log --all` also has to be checked, not just `git log`** — a key
   committed and later reverted on the same branch is invisible to `git log`
   on `HEAD` but still sits in history and is still pushed. This repo has
