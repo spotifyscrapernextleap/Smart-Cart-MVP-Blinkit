@@ -179,7 +179,19 @@ export type RecommendOutcome =
   | "fallback_nokey";
 
 /** Which surface a product entered the cart from. See `cart_add` below. */
-export type CartAddSource = "search" | "panel" | "category";
+/**
+ * Which surface a product entered the cart through.
+ *
+ * The spec (§3.6) names `search | panel`. `category` was added by D37 and
+ * `suggested` by Phase 10 — both for the same reason: attributing a browse or
+ * a related-product tap as a search would inflate search's conversions, which
+ * is the exact error D22 exists to prevent. A new surface gets a new value.
+ *
+ * `suggested` covers both "You might also like" and the "Special deal" card.
+ * They are one channel — cart-adjacent complements — and separating them would
+ * split a number too small to read.
+ */
+export type CartAddSource = "search" | "panel" | "category" | "suggested";
 
 export interface EventPayloads {
   panel_impression: {

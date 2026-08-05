@@ -44,10 +44,16 @@ export default function CartLine({
           {product.name}
         </h3>
         <p className="clamp-1 text-[11px] text-[var(--color-ink-muted)]">{product.brand}</p>
-        <p className="mt-0.5 text-[13px] font-semibold">₹{product.price * quantity}</p>
+        {/*
+          Inert: there is no wishlist in this build. Rendered as text rather
+          than a link so it cannot be focused or tapped — see CheckoutExtras.
+        */}
+        <p className="mt-0.5 text-[11px] text-[var(--color-ink-muted)] underline" aria-hidden>
+          Move to wishlist
+        </p>
       </div>
 
-      <div className="flex shrink-0 items-center">
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
         <QuantityStepper
           quantity={quantity}
           onAdd={handleIncrement}
@@ -55,6 +61,14 @@ export default function CartLine({
           onDecrement={handleDecrement}
           label={product.name}
         />
+        <p className="flex items-baseline gap-1.5">
+          {product.mrp > product.price && (
+            <span className="text-[11px] text-[var(--color-ink-faint)] line-through">
+              ₹{product.mrp * quantity}
+            </span>
+          )}
+          <span className="text-[13px] font-semibold">₹{product.price * quantity}</span>
+        </p>
       </div>
     </li>
   );

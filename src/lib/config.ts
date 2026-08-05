@@ -205,3 +205,61 @@ export const MODEL_SHORTLIST_DEPTH = 6;
  */
 export const REASON_MAX_CHARS = 100;
 export const REASON_MAX_WORDS = 8;
+
+// ---------------------------------------------------------------------------
+// Checkout chrome (Phase 10).
+//
+// The cart page reproduces the surrounding sections of a real Blinkit
+// checkout — fees, donation, tip, suggested products — so the Smart Cart panel
+// is evaluated in the context it would actually ship in, rather than on a bare
+// page that flatters it. Every number here is presentational: none of it feeds
+// the recommendation engine, and none of it is read by /api/recommend.
+// ---------------------------------------------------------------------------
+
+/**
+ * Delivery fee shown struck through before the FREE label.
+ *
+ * Delivery is always free in this build — there is no fee model and inventing
+ * one would misstate the deliverable. This is the "was" number that makes FREE
+ * legible as a saving, and it feeds the total-savings line.
+ */
+export const DELIVERY_FEE_ORIGINAL = 30;
+
+/** Flat handling charge. The one fee that is actually added to the total. */
+export const HANDLING_CHARGE = 12;
+
+/** Preset donation amounts, in rupees. */
+export const DONATION_OPTIONS: readonly number[] = [5, 10, 15];
+
+/** The preset tagged "1 MEAL". Must be one of DONATION_OPTIONS. */
+export const DONATION_MEAL_AMOUNT = 15;
+
+/** Preset delivery-partner tips, in rupees. */
+export const TIP_OPTIONS: readonly number[] = [20, 30, 50];
+
+/** Products in the "You might also like" grid. Six fills two rows of three. */
+export const SUGGESTED_PRODUCT_COUNT = 6;
+
+/**
+ * Stars shown on every suggested product card.
+ *
+ * Frozen, and deliberately not per-product. The source dump has a `rating`
+ * column, but this build does not carry it and will not fabricate one: a
+ * varying number on a page whose premise is a *real* persona with *real*
+ * history invites the reader to believe it means something. A constant four
+ * stars is visibly furniture — it reproduces the shape of the real UI without
+ * claiming a fact. Owner's decision.
+ */
+export const SUGGESTED_STAR_RATING = 4;
+
+/**
+ * Price ceiling for the "Special deal" card.
+ *
+ * A deal card is an impulse add — the real Blinkit example is a ₹45 shampoo.
+ * Without a cap, selecting by discount picks whatever is most expensive
+ * (the first build of this offered a ₹1,508 eau de toilette beside ₹81
+ * noodles), which reads as a mis-targeted ad rather than a deal. If nothing
+ * cheap enough is discounted, the section does not render at all: no deal is
+ * better than an absurd one.
+ */
+export const SPECIAL_DEAL_MAX_PRICE = 150;

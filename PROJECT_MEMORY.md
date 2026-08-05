@@ -9,7 +9,8 @@ conversation.** Read this file top to bottom before touching anything.
 
 ## START HERE — current state
 
-**All ten phases are complete, tested and deployed. The build is finished.**
+**All phases are complete, tested and deployed, plus a Phase 10 that is not in
+the build spec.**
 
 **Live: <https://smart-cart-mvp-blinkit.vercel.app>**
 
@@ -25,11 +26,11 @@ conversation.** Read this file top to bottom before touching anything.
 | 7 — Browse & Replace | ✅ committed | 71/71 replace |
 | 8 — Events | ✅ committed | 45/45 events |
 | **9 — Deploy** | ✅ **deployed** | `outcome: "model"` at 1482ms on the production URL |
+| **10 — Checkout chrome** (beyond spec) | ✅ committed | 55/55 checkout |
 
-**354 checks pass across the eight phase suites** (Phases 1–8), **plus 12 in the
-Phase 0 data verifier** — 366 in total, if you count the way the commands
-section runs them. `tsc`, `eslint --max-warnings 0` and `next build` are all
-clean — reconfirmed at the start of Phase 9.
+**409 checks pass across the nine phase suites** (Phases 1–8 and 10), **plus 12
+in the Phase 0 data verifier** — 421 in total, the way the commands section runs
+them. `tsc`, `eslint --max-warnings 0` and `next build` are all clean.
 
 **The whole feature is now built.** Search *or* browse a category → add to cart
 → checkout → a four-row Smart Cart panel whose products and reason lines are
@@ -44,6 +45,15 @@ production URL: `recommend_call.outcome` reads `model` at 1482ms, not a
 fallback. Repo: `github.com/spotifyscrapernextleap/smart-cart-mvp-blinkit`,
 branch **`main`** (see the Phase 9 section — it was `master` for most of the
 build).
+
+**Phase 10 (beyond the spec)** rebuilt the cart page as a full Blinkit
+checkout — special deal, suggestion grid, coupons, GSTIN, delivery
+instructions, donation, tip, gifting, cancellation policy, and a sticky Place
+Order bar — so the panel is judged in the context it would ship in. **The panel
+did not move and cannot be crowded**: everything added sits above the basket or
+below the bill, and the one section that recommends products draws only from
+tiles already in the cart, which is exactly the set the panel excludes (D1a).
+See [`phases/phase-10-checkout/README.md`](phases/phase-10-checkout/README.md).
 
 **The one thing still genuinely undone: nobody has looked at this app.**
 Screenshots have failed in every single session — the browser pane never
@@ -80,8 +90,8 @@ open, and every S1 is closed.** Each phase README states which it closed.
 **Conventions**
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
-- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D39 exist;
-  the next new decision is D40.**
+- Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D44 exist;
+  the next new decision is D45.**
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
 - Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
@@ -109,6 +119,7 @@ node phases/phase-5-panel-ui/verify_panel_cache.ts
 node phases/phase-6-model/verify_model.ts
 node phases/phase-7-browse-replace/verify_replace.ts
 node phases/phase-8-events/verify_events.ts
+node phases/phase-10-checkout/verify_checkout.ts
 node phases/phase-0-data/verify_history.js
 ```
 
@@ -191,6 +202,10 @@ src/app/
   category/[tile]/page.tsx  CATEGORY LISTING — static, one per BROWSABLE_TILES entry (D37)
   api/recommend/route.ts    THE ONLY SERVER-SIDE FILE. Only place GROQ_API_KEY is read.
                             Model call, 4s abort, every fallback route.
+src/lib/checkout.ts         Phase 10. Cart-ADJACENT suggestions + bill arithmetic.
+                            Draws only from tiles IN the cart — the exact
+                            complement of what the panel draws from (D1a), which
+                            is what stops it becoming a second discovery surface.
 src/components/             AppHeader, SearchBar, CategoryGrid, ProductCard, ProductImage,
                             QuantityStepper, CartLine, BillDetails, ViewCartBar,
                             SmartCartPanel, RecommendationRow, BrowseReplaceSheet,
@@ -286,6 +301,11 @@ Added beyond the spec, in a marked section (D10): `SEARCH_MAX_SCORE` 0.35 (D16) 
 `MODEL_MAX_COMPLETION_TOKENS` 1024 (D32) · `MODEL_SHORTLIST_DEPTH` 6 (D33) ·
 `REASON_MAX_CHARS` 100 / `REASON_MAX_WORDS` 8 (spec prose, made constants) ·
 `SHEET_ENTER_MS` 200 (D10) · `BROWSABLE_TILES` 9 tiles (D37)
+
+Phase 10 checkout chrome, all presentational and none read by `/api/recommend`:
+`DELIVERY_FEE_ORIGINAL` 30 · `HANDLING_CHARGE` 12 · `DONATION_OPTIONS` [5,10,15] ·
+`DONATION_MEAL_AMOUNT` 15 · `TIP_OPTIONS` [20,30,50] · `SUGGESTED_PRODUCT_COUNT` 6 ·
+`SUGGESTED_STAR_RATING` 4 (D40) · `SPECIAL_DEAL_MAX_PRICE` 150
 
 ---
 

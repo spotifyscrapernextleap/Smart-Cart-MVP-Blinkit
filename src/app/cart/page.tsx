@@ -1,10 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 import BillDetails from "@/components/BillDetails";
 import CartLine from "@/components/CartLine";
+import DonationCard from "@/components/DonationCard";
+import PlaceOrderBar from "@/components/PlaceOrderBar";
 import SmartCartPanel from "@/components/SmartCartPanel";
+import SpecialDeal from "@/components/SpecialDeal";
+import TipCard from "@/components/TipCard";
+import YouMightAlsoLike from "@/components/YouMightAlsoLike";
+import {
+  AddGstin,
+  CancellationPolicy,
+  DeliveryInstructions,
+  GiftPackaging,
+  UseCoupons,
+} from "@/components/CheckoutExtras";
+import { computeBill } from "@/lib/checkout";
 import { useCart } from "@/lib/useCart";
 
 /**
@@ -12,6 +26,17 @@ import { useCart } from "@/lib/useCart";
  *
  * Cart line items, then the Smart Cart panel, then Bill details — the panel
  * sits at the one screen no user can skip, between the basket and the bill.
+ *
+ * **The panel's position is load-bearing and did not move in Phase 10.** The
+ * page grew from four sections to fourteen to reproduce a real Blinkit
+ * checkout, and the temptation in that rewrite is to let the deliverable drift
+ * down the scroll among the donation and tip blocks. It stays welded to the
+ * basket, in the same card, as the first thing after the items — everything
+ * added in Phase 10 sits either above the basket or below the bill.
+ *
+ * The one section that could have competed with it is "You might also like",
+ * and it cannot: it draws only from tiles already in the cart, which is the
+ * exact set the panel excludes (D1a). See `checkout.ts`.
  *
  * Reachable directly by URL with an empty cart (no minimum-cart-size gate, per
  * idea doc §5), so the empty state is handled rather than left to crash. The
@@ -26,7 +51,25 @@ function CartHeader() {
           <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </Link>
-      <h1 className="text-[16px] font-bold text-[var(--color-ink)]">Checkout</h1>
+      <h1 className="flex-1 text-[16px] font-bold text-[var(--color-ink)]">Checkout</h1>
+
+      {/* Search is real and goes to the search page; Share has nothing behind it. */}
+      <Link href="/search" aria-label="Search products" className="rounded-lg p-2 text-[var(--color-ink)]">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+        </svg>
+      </Link>
+      <span
+        className="mr-1 flex items-center gap-1 rounded-full border border-[var(--color-hairline)] px-3 py-1.5 text-[12px] font-semibold text-[var(--color-ink)]"
+        aria-hidden
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" strokeLinecap="round" />
+          <path d="M12 15V3m0 0L8 7m4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Share
+      </span>
     </div>
   );
 }
@@ -84,7 +127,14 @@ function EmptyCart() {
 }
 
 export default function CartPage() {
-  const { lines, itemCount, subtotal } = useCart();
+  const { lines, itemCount } = useCart();
+
+  // Per-checkout choices, not persisted: a donation is a decision about this
+  // order, and `sc_*` storage is for state that must survive a reload.
+  const [donation, setDonation] = useState(0);
+  const [tip, setTip] = useState(0);
+
+  const bill = computeBill(lines, { donation, tip });
 
   if (lines.length === 0) {
     return (
@@ -96,8 +146,10 @@ export default function CartPage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col bg-[var(--color-surface-sunken)]">
+    <main className="flex flex-1 flex-col bg-[var(--color-surface-sunken)] pb-3">
       <CartHeader />
+
+      <SpecialDeal lines={lines} />
       <DeliveryCard itemCount={itemCount} />
 
       {/*
@@ -116,11 +168,27 @@ export default function CartPage() {
         <SmartCartPanel />
       </div>
 
+      <UseCoupons />
+
       <div className="mx-3 mt-3 rounded-xl bg-[var(--color-surface)]">
-        <BillDetails subtotal={subtotal} />
+        <BillDetails bill={bill} />
       </div>
 
+      {/*
+        Everything below the bill. "You might also like" leads, because it is
+        the one section here a user might act on — the rest is trust chrome.
+      */}
+      <YouMightAlsoLike lines={lines} />
+      <AddGstin />
+      <DeliveryInstructions />
+      <DonationCard amount={donation} onChange={setDonation} />
+      <TipCard amount={tip} onChange={setTip} />
+      <GiftPackaging />
+      <CancellationPolicy />
+
       <DeliveryAddress />
+
+      <PlaceOrderBar total={bill.grandTotal} />
     </main>
   );
 }
