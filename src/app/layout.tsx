@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import AppBootstrap from "@/components/AppBootstrap";
+import SupportingDocsPanel from "@/components/SupportingDocsPanel";
 
 import "./globals.css";
 
@@ -25,6 +26,14 @@ export default function RootLayout({
       <body className="min-h-full">
         <AppBootstrap />
         <div className="app-shell flex min-h-full flex-col">{children}</div>
+        {/*
+          Mounted in the layout, not a page, so it opens once per full page
+          load and does not re-open on client-side navigation — the layout
+          persists across route changes in the App Router. (Panel spec §1, §7.)
+          Rendered last so it is the final child of <body>; it portals to
+          document.body regardless, but this keeps the DOM order honest.
+        */}
+        <SupportingDocsPanel />
       </body>
     </html>
   );

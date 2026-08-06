@@ -27,10 +27,11 @@ the build spec.**
 | 8 — Events | ✅ committed | 45/45 events |
 | **9 — Deploy** | ✅ **deployed** | `outcome: "model"` at 1482ms on the production URL |
 | **10 — Checkout chrome** (beyond spec) | ✅ committed | 55/55 checkout |
+| **11 — Supporting docs panel** (separate spec) | ✅ committed | 33/33 config + 4/5 links public |
 
-**409 checks pass across the nine phase suites** (Phases 1–8 and 10), **plus 12
-in the Phase 0 data verifier** — 421 in total, the way the commands section runs
-them. `tsc`, `eslint --max-warnings 0` and `next build` are all clean.
+**442 checks pass across the ten phase suites** (Phases 1–8, 10 and 11), **plus
+12 in the Phase 0 data verifier** — 454 in total, the way the commands section
+runs them. `tsc`, `eslint --max-warnings 0` and `next build` are all clean.
 
 **The whole feature is now built.** Search *or* browse a category → add to cart
 → checkout → a four-row Smart Cart panel whose products and reason lines are
@@ -54,6 +55,22 @@ did not move and cannot be crowded**: everything added sits above the basket or
 below the bill, and the one section that recommends products draws only from
 tiles already in the cart, which is exactly the set the panel excludes (D1a).
 See [`phases/phase-10-checkout/README.md`](phases/phase-10-checkout/README.md).
+
+**Phase 11 (a separate build spec)** adds the supporting-documents panel — a
+dependency-free modal that opens once per page load and lists the research
+artefacts as working links, because the submitted deck was exported through a
+virtual PDF printer that stripped its hyperlinks. `src/disclaimer.config.js`
+is **byte-identical to the other app's copy by contract — diff before
+submitting.** Three deviations from its reference implementation were forced by
+this repo, all recorded in
+[`phases/phase-11-docs-panel/README.md`](phases/phase-11-docs-panel/README.md);
+the important one is that the spec's mount effect is an eslint *error* here,
+under the same rule that produced D21.
+
+**Before any resubmission, run `node phases/phase-11-docs-panel/check_links.ts`** —
+it fetches every link signed-out and inspects the body, because Google serves
+HTTP 200 for its "Request access" wall. The Miro board cannot be verified this
+way and needs a manual incognito check.
 
 **The one thing still genuinely undone: nobody has looked at this app.**
 Screenshots have failed in every single session — the browser pane never
@@ -91,7 +108,8 @@ open, and every S1 is closed.** Each phase README states which it closed.
 - App lives at the repo root (not nested in `smart-cart/`), so `phases/`, `data/`,
   `scripts/`, `src/` and `public/` are siblings.
 - Decisions are numbered `D<n>` and referenced from phase READMEs. **D1–D44 exist;
-  the next new decision is D45.**
+  the next new decision is D45.** Phase 11 implements a *separate* build spec and
+  logs its deviations in its own README rather than as `D<n>`.
 - A decision is logged when it departs from the spec, resolves an ambiguity in it,
   or would otherwise be invisible to whoever reads the code next.
 - Every phase gets `phases/phase-N-name/` with a `README.md` and, where the logic
@@ -120,6 +138,7 @@ node phases/phase-6-model/verify_model.ts
 node phases/phase-7-browse-replace/verify_replace.ts
 node phases/phase-8-events/verify_events.ts
 node phases/phase-10-checkout/verify_checkout.ts
+node phases/phase-11-docs-panel/verify_docs_panel.ts
 node phases/phase-0-data/verify_history.js
 ```
 
