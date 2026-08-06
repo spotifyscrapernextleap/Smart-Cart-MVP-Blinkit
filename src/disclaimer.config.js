@@ -5,7 +5,7 @@ export const DISCLAIMER = {
   // The note. Array of paragraphs — each entry renders as its own <p>.
   // Keep to 2 short paragraphs; anything longer pushes the link list below the fold.
   note: [
-    "Dear Evaluator(s) — I submitted my grad project at 3:55 pm and made the mistake of not double-checking the exported PDF. The deck came out with black bars above and below every slide, cutting down the dimensions of the actual slides, and none of the links in it were clickable.",
+    "Dear Evaluator(s) — I submitted my grad project at 3:55 pm and made the mistake of not double-checking the exported PDF. The deck came out with black bars above and below every slide — the slides themselves are preserved at their original 1920 × 1080 dimensions, but the PDF was exported in an A4-size format, which is why the bars appear — and none of the links in it were clickable.",
     "That was my error for not finishing in time to check it diligently, and I sincerely hope it does not become an impediment to a fair evaluation of my work — I have put my heart and soul into this (and a lot of tokens!). Through this panel I am sharing all the supporting assets I had wanted to share through the deck. Thank you."
   ],
 
